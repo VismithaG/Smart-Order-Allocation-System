@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { getOrders } from "../../lib/store";
-import { getSession } from "../../lib/auth";
+import { api } from "../../lib/api";
 import StatusBadge from "../../components/StatusBadge";
 import type { Order } from "../../lib/types";
 
@@ -15,38 +14,70 @@ function timeAgo(iso: string): string {
 }
 
 export default function OrderHistory() {
-  const session = getSession();
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  function loadOrders() {
+    setLoading(true);
+    api.orders.list({ search, status: statusFilter !== "all" ? statusFilter : undefined })
+      .then((res) => {
+        if (res.success && res.orders) {
+          setOrders(res.orders);
+        }
+      })
+      .catch((err) => console.error("Error loading orders:", err))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    const all = getOrders();
-    const mine = session?.user.role === "admin" ? all : all.filter((o) => o.customerId === session?.user.id);
-    setOrders(mine);
-  }, []);
+    loadOrders();
+  }, [statusFilter]);
+
+  async function handleCancel(orderId: string) {
+    if (!confirm("Are you sure you want to cancel this order? Reserved stock will be returned to the branch.")) {
+      return;
+    }
+
+    setCancellingId(orderId);
+    try {
+      const res = await api.orders.cancel(orderId);
+      if (res.success) {
+        loadOrders();
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel order.");
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   const filtered = orders.filter((o) => {
-    const matchSearch =
-      o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.items.some((i) => i.productName.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === "all" || o.status === statusFilter;
-    return matchSearch && matchStatus;
+    if (!search.trim()) return true;
+    const term = search.toLowerCase();
+    return (
+      o.id.toLowerCase().includes(term) ||
+      o.items.some((i) => i.productName.toLowerCase().includes(term))
+    );
   });
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>My Orders</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>Your order history and real-time status.</p>
+        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+          Real-time order tracking, branch allocation reasoning, and cancellation management.
+        </p>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-5 flex-wrap">
         <input
           type="search"
-          placeholder="Search by order ID or item…"
+          placeholder="Search by order ID or product name…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-md border outline-none flex-1 min-w-48"
@@ -55,89 +86,145 @@ export default function OrderHistory() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border outline-none"
+          className="px-3 py-1.5 text-sm rounded-md border outline-none cursor-pointer"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         >
-          <option value="all">All statuses</option>
-          <option value="pending">Pending</option>
+          <option value="all">All Statuses</option>
           <option value="allocated">Allocated</option>
           <option value="preparing">Preparing</option>
           <option value="out_for_delivery">Out for Delivery</option>
           <option value="delivered">Delivered</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <button
+          onClick={loadOrders}
+          className="px-3 py-1.5 text-xs rounded-md border font-medium cursor-pointer"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        >
+          Refresh
+        </button>
       </div>
 
-      {/* Orders */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: "var(--muted-foreground)" }}>
-          <div className="text-3xl mb-2">📦</div>
-          <div className="text-sm">No orders found</div>
+      {/* Orders List */}
+      {loading ? (
+        <div className="p-12 text-center text-sm text-muted-foreground">Loading orders from backend...</div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-lg border p-8 text-center" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>No orders found matching your criteria.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map((order) => {
-            const isExpanded = expanded === order.id;
+            const isExp = expanded === order.id;
+            const canCancel = ["pending", "allocated", "preparing"].includes(order.status);
+
             return (
-              <div key={order.id} className="rounded-lg border overflow-hidden transition-all" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-                <button
-                  className="w-full flex items-center gap-4 px-4 py-3 text-left"
-                  onClick={() => setExpanded(isExpanded ? null : order.id)}
+              <div
+                key={order.id}
+                className="rounded-lg border transition-colors"
+                style={{ background: "var(--card)", borderColor: "var(--border)" }}
+              >
+                {/* Header */}
+                <div
+                  onClick={() => setExpanded(isExp ? null : order.id)}
+                  className="p-4 flex items-center justify-between gap-4 cursor-pointer select-none"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-mono" style={{ color: "var(--muted-foreground)" }}>{order.id}</span>
-                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>·</span>
-                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{timeAgo(order.createdAt)}</span>
-                    </div>
-                    <div className="text-sm truncate" style={{ color: "var(--foreground)" }}>
-                      {order.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}
-                    </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-mono text-xs font-semibold" style={{ color: "var(--foreground)" }}>
+                      {order.id}
+                    </span>
+                    <StatusBadge status={order.status} />
+                    {order.allocationScore !== null && (
+                      <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/50 text-emerald-400 border border-emerald-800">
+                        Score: {order.allocationScore}/100
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+
+                  <div className="flex items-center gap-4 shrink-0">
                     <span className="font-mono text-sm font-semibold" style={{ color: "var(--primary)" }}>
                       LKR {order.total.toFixed(2)}
                     </span>
-                    <StatusBadge status={order.status} />
-                    <svg
-                      width="12" height="12" viewBox="0 0 12 12" fill="none"
-                      style={{ color: "var(--muted-foreground)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-                    >
-                      <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
+                    <span className="text-xs hidden sm:inline" style={{ color: "var(--muted-foreground)" }}>
+                      {timeAgo(order.createdAt)}
+                    </span>
+                    <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                      {isExp ? "▲" : "▼"}
+                    </span>
                   </div>
-                </button>
+                </div>
 
-                {isExpanded && (
-                  <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--border)" }}>
-                    <div className="grid grid-cols-2 gap-4 mt-3 text-xs">
+                {/* Expanded Details */}
+                {isExp && (
+                  <div className="px-4 pb-4 pt-1 border-t text-xs space-y-3" style={{ borderColor: "var(--border)" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       <div>
-                        <div className="font-medium mb-1.5" style={{ color: "var(--muted-foreground)" }}>Items</div>
-                        {order.items.map((item) => (
-                          <div key={item.productId} className="flex justify-between py-0.5">
-                            <span style={{ color: "var(--foreground)" }}>{item.productName} ×{item.quantity}</span>
-                            <span className="font-mono" style={{ color: "var(--muted-foreground)" }}>LKR {(item.quantity * item.unitPrice).toFixed(2)}</span>
+                        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          Delivery Destination
+                        </div>
+                        <div style={{ color: "var(--foreground)" }}>{order.customerLocation?.city}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          Allocated Fulfillment Branch
+                        </div>
+                        <div style={{ color: "var(--foreground)" }}>
+                          {order.allocatedBranchName || (order.allocatedBranchId ? order.allocatedBranchId : "None (Unallocated)")}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rationale & Breakdown */}
+                    {order.allocationReason && (
+                      <div className="p-3 rounded-md bg-black/10 dark:bg-white/5 space-y-1">
+                        <div className="font-semibold text-muted-foreground">Allocation Engine Rationale:</div>
+                        <div style={{ color: "var(--foreground)" }}>{order.allocationReason}</div>
+                      </div>
+                    )}
+
+                    {/* Customer Note & AI Category */}
+                    {order.customerNote && (
+                      <div className="p-2.5 rounded-md border flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+                        <div>
+                          <span className="text-muted-foreground">Note: </span>
+                          <span style={{ color: "var(--foreground)" }}>"{order.customerNote}"</span>
+                        </div>
+                        {order.aiCategory && (
+                          <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-purple-950/60 text-purple-300">
+                            🤖 AI Tag: {order.aiCategory} ({Math.round((order.aiConfidence || 0) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Items List */}
+                    <div>
+                      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                        Items Ordered
+                      </div>
+                      <div className="space-y-1">
+                        {order.items.map((i, idx) => (
+                          <div key={idx} className="flex justify-between py-1 border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+                            <span style={{ color: "var(--foreground)" }}>{i.quantity}x {i.productName}</span>
+                            <span className="font-mono" style={{ color: "var(--muted-foreground)" }}>
+                              LKR {(i.quantity * i.unitPrice).toFixed(2)}
+                            </span>
                           </div>
                         ))}
                       </div>
-                      <div>
-                        <div className="font-medium mb-1.5" style={{ color: "var(--muted-foreground)" }}>Allocation</div>
-                        {order.allocatedBranchId ? (
-                          <>
-                            <div className="mb-0.5" style={{ color: "var(--foreground)" }}>
-                              Branch assigned
-                            </div>
-                            <div style={{ color: "var(--muted-foreground)" }}>Score: <span className="font-mono" style={{ color: "var(--primary)" }}>{order.allocationScore}/100</span></div>
-                            <div className="mt-1" style={{ color: "var(--muted-foreground)" }}>{order.allocationReason}</div>
-                          </>
-                        ) : (
-                          <div style={{ color: "#f87171" }}>Unallocated — {order.allocationReason}</div>
-                        )}
-                      </div>
                     </div>
-                    {order.note && (
-                      <div className="mt-3 text-xs p-2 rounded" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
-                        <span className="font-medium" style={{ color: "var(--foreground)" }}>Note: </span>{order.note}
+
+                    {/* Cancellation Action */}
+                    {canCancel && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={() => handleCancel(order.id)}
+                          disabled={cancellingId === order.id}
+                          className="px-3 py-1.5 rounded text-xs font-medium text-red-400 border border-red-800 hover:bg-red-950/30 cursor-pointer disabled:opacity-40"
+                        >
+                          {cancellingId === order.id ? "Cancelling..." : "Cancel Order (Restores Stock)"}
+                        </button>
                       </div>
                     )}
                   </div>

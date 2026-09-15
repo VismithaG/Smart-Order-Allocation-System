@@ -9,21 +9,24 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      const result = login(email.trim(), password);
+    try {
+      const result = await login(email.trim(), password);
       if (result.success && result.session) {
         onLogin(result.session.user.role);
         navigate(result.session.user.role === "admin" ? "/admin" : "/orders/new");
       } else {
         setError(result.error || "Login failed.");
       }
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in.");
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   }
 
   function fillDemo(role: "customer" | "admin") {

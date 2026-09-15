@@ -1,0 +1,72 @@
+[
+  {
+    "id": 447,
+    "message": "Why is my promo code not working?",
+    "predicted_category": "Account/Login Issue",
+    "confidence": 0.4344,
+    "low_confidence_flag": true
+  },
+  {
+    "id": 449,
+    "message": "I was charged twice",
+    "predicted_category": "Payment Issue",
+    "confidence": 0.7666,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 441,
+    "message": "My payment is still pending",
+    "predicted_category": "Payment Issue",
+    "confidence": 0.9159,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 444,
+    "message": "Is this product available today?",
+    "predicted_category": "Product/Stock Inquiry",
+    "confidence": 0.8354,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 450,
+    "message": "Can I change my delivery address?",
+    "predicted_category": "Delivery Issue",
+    "confidence": 0.796,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 446,
+    "message": "I cannot log into my account",
+    "predicted_category": "Account/Login Issue",
+    "confidence": 0.8622,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 442,
+    "message": "Where is my delivery?",
+    "predicted_category": "Delivery Issue",
+    "confidence": 0.8725,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 445,
+    "message": "Can you check my order status?",
+    "predicted_category": "Order Status Inquiry",
+    "confidence": 0.9392,
+    "low_confidence_flag": false
+  },
+  {
+    "id": 448,
+    "message": "",
+    "predicted_category": "General Inquiry",
+    "confidence": 0.0,
+    "low_confidence_flag": true
+  },
+  {
+    "id": 443,
+    "message": "I want a refund for this order",
+    "predicted_category": "Refund/Cancellation",
+    "confidence": 0.958,
+    "low_confidence_flag": false
+  }
+]

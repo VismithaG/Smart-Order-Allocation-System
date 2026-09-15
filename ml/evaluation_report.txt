@@ -1,0 +1,24 @@
+Smart Order Allocation System - AI Customer Inquiry Classifier Report
+======================================================================
+
+Dataset: customer_inquiries.csv
+Total training samples: 426
+Number of classes: 8
+5-Fold CV Accuracy: 88.03% (+/- 3.77%)
+
+Classification Report:
+                            precision    recall  f1-score   support
+
+       Account/Login Issue     0.9259    0.9434    0.9346        53
+            Delivery Issue     0.9130    0.7925    0.8485        53
+           General Inquiry     0.8571    0.8889    0.8727        54
+      Order Status Inquiry     0.8033    0.9245    0.8596        53
+             Payment Issue     0.8929    0.9434    0.9174        53
+     Product/Stock Inquiry     0.8909    0.9245    0.9074        53
+Promotion/Discount Inquiry     0.8980    0.8148    0.8544        54
+       Refund/Cancellation     0.8776    0.8113    0.8431        53
+
+                  accuracy                         0.8803       426
+                 macro avg     0.8823    0.8804    0.8797       426
+              weighted avg     0.8823    0.8803    0.8796       426
+

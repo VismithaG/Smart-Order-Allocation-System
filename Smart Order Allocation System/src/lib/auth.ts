@@ -1,7 +1,8 @@
 import type { User } from "./types";
-import { DEMO_USERS } from "./store";
+import { api } from "./api";
 
 const SESSION_KEY = "soas_session";
+const JWT_KEY = "soas_jwt";
 
 export interface Session {
   user: User;
@@ -9,49 +10,42 @@ export interface Session {
   expiresAt: number;
 }
 
-function generateToken(userId: string): string {
-  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const payload = btoa(JSON.stringify({ sub: userId, iat: Date.now(), exp: Date.now() + 8 * 3600 * 1000 }));
-  const sig = btoa(`${userId}:${Date.now()}`);
-  return `${header}.${payload}.${sig}`;
-}
+export async function login(
+  email: string,
+  password: string
+): Promise<{ success: boolean; session?: Session; error?: string }> {
+  try {
+    const res = await api.auth.login(email.trim(), password);
+    if (res.success && res.token && res.user) {
+      const session: Session = {
+        user: {
+          id: res.user.id,
+          name: res.user.name,
+          email: res.user.email,
+          role: res.user.role,
+          location: {
+            city: res.user.city || "Colombo",
+            lat: res.user.lat || 6.9271,
+            lng: res.user.lng || 79.8612,
+          },
+        },
+        token: res.token,
+        expiresAt: Date.now() + 8 * 3600 * 1000,
+      };
 
-function hashPassword(password: string): string {
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem(JWT_KEY, res.token);
+      return { success: true, session };
+    }
+    return { success: false, error: "Authentication failed." };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to connect to backend server." };
   }
-  return hash.toString(16);
-}
-
-const DEMO_PASSWORDS: Record<string, string> = {
-  "customer@demo.com": hashPassword("customer123"),
-  "admin@demo.com": hashPassword("admin123"),
-};
-
-export function login(email: string, password: string): { success: boolean; session?: Session; error?: string } {
-  const user = DEMO_USERS.find((u) => u.email === email);
-  if (!user) return { success: false, error: "No account found with that email." };
-
-  const expectedHash = DEMO_PASSWORDS[email];
-  if (!expectedHash || hashPassword(password) !== expectedHash) {
-    return { success: false, error: "Incorrect password." };
-  }
-
-  const session: Session = {
-    user,
-    token: generateToken(user.id),
-    expiresAt: Date.now() + 8 * 3600 * 1000,
-  };
-
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return { success: true, session };
 }
 
 export function logout(): void {
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(JWT_KEY);
 }
 
 export function getSession(): Session | null {
@@ -60,7 +54,7 @@ export function getSession(): Session | null {
     if (!raw) return null;
     const session = JSON.parse(raw) as Session;
     if (Date.now() > session.expiresAt) {
-      localStorage.removeItem(SESSION_KEY);
+      logout();
       return null;
     }
     return session;

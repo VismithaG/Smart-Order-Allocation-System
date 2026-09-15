@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getBranches, getOrders, updateOrder, updateBranch } from "../../lib/store";
+import { api } from "../../lib/api";
 import StatusBadge from "../../components/StatusBadge";
 import type { Branch, Order, OrderStatus } from "../../lib/types";
 
@@ -21,85 +21,122 @@ export default function OrderManagement() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
-  const [reassigning, setReassigning] = useState<string | null>(null);
-  const [reassignBranch, setReassignBranch] = useState("");
+  const [reassigningOrder, setReassigningOrder] = useState<Order | null>(null);
+  const [targetBranchId, setTargetBranchId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   function refresh() {
-    setOrders(getOrders());
-    setBranches(getBranches());
+    setLoading(true);
+    Promise.all([
+      api.orders.list({
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        branchId: branchFilter !== "all" ? branchFilter : undefined,
+        search: search.trim() || undefined,
+      }),
+      api.branches.list(),
+    ])
+      .then(([orderRes, branchRes]) => {
+        if (orderRes.success && orderRes.orders) setOrders(orderRes.orders);
+        if (branchRes.success && branchRes.branches) setBranches(branchRes.branches);
+      })
+      .catch((err) => console.error("Error refreshing orders:", err))
+      .finally(() => setLoading(false));
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, [statusFilter, branchFilter]);
 
-  const filtered = orders.filter((o) => {
-    const matchSearch =
-      o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      o.items.some((i) => i.productName.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === "all" || o.status === statusFilter;
-    const matchBranch = branchFilter === "all" || o.allocatedBranchId === branchFilter;
-    return matchSearch && matchStatus && matchBranch;
-  });
-
-  function advanceStatus(order: Order) {
+  async function handleAdvanceStatus(order: Order) {
     const idx = STATUS_FLOW.indexOf(order.status as OrderStatus);
     if (idx === -1 || idx === STATUS_FLOW.length - 1) return;
-    updateOrder(order.id, { status: STATUS_FLOW[idx + 1] });
-    if (STATUS_FLOW[idx + 1] === "delivered" && order.allocatedBranchId) {
-      const branch = branches.find((b) => b.id === order.allocatedBranchId);
-      if (branch) updateBranch(branch.id, { activeOrders: Math.max(0, branch.activeOrders - 1) });
+
+    const nextStatus = STATUS_FLOW[idx + 1];
+    setActionInProgress(order.id);
+    try {
+      const res = await api.orders.updateStatus(order.id, nextStatus);
+      if (res.success) {
+        refresh();
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update status.");
+    } finally {
+      setActionInProgress(null);
     }
-    refresh();
   }
 
-  function cancelOrder(order: Order) {
-    updateOrder(order.id, { status: "cancelled" });
-    if (order.allocatedBranchId) {
-      const branch = branches.find((b) => b.id === order.allocatedBranchId);
-      if (branch) updateBranch(branch.id, { activeOrders: Math.max(0, branch.activeOrders - 1) });
+  async function handleCancelOrder(order: Order) {
+    if (!confirm(`Cancel order ${order.id}? Reserved inventory will be returned to branch.`)) {
+      return;
     }
-    refresh();
+
+    setActionInProgress(order.id);
+    try {
+      const res = await api.orders.cancel(order.id);
+      if (res.success) {
+        refresh();
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel order.");
+    } finally {
+      setActionInProgress(null);
+    }
   }
 
-  function doReassign(order: Order) {
-    if (!reassignBranch) return;
-    const oldBranch = branches.find((b) => b.id === order.allocatedBranchId);
-    const newBranch = branches.find((b) => b.id === reassignBranch);
-    if (oldBranch) updateBranch(oldBranch.id, { activeOrders: Math.max(0, oldBranch.activeOrders - 1) });
-    if (newBranch) updateBranch(newBranch.id, { activeOrders: newBranch.activeOrders + 1 });
-    updateOrder(order.id, {
-      allocatedBranchId: reassignBranch,
-      allocationReason: `Manually reassigned to ${newBranch?.name ?? reassignBranch} by admin.`,
-    });
-    setReassigning(null);
-    refresh();
+  async function handleDoReassign() {
+    if (!reassigningOrder || !targetBranchId) return;
+
+    setActionInProgress(reassigningOrder.id);
+    try {
+      const res = await api.orders.reassign(reassigningOrder.id, targetBranchId);
+      if (res.success) {
+        setReassigningOrder(null);
+        refresh();
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to reassign branch.");
+    } finally {
+      setActionInProgress(null);
+    }
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>Order Management</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>Search, filter, and manage all customer orders.</p>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>Order Management & Overrides</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+            Monitor automated allocations, advance order statuses, or manually reassign fulfillment branches.
+          </p>
+        </div>
+        <button
+          onClick={refresh}
+          className="px-3 py-1.5 text-xs rounded-md border font-medium cursor-pointer"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        >
+          ↻ Refresh
+        </button>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-5 flex-wrap">
         <input
           type="search"
-          placeholder="Search orders, customers, items…"
+          placeholder="Search order ID, customer name, note…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && refresh()}
           className="px-3 py-1.5 text-sm rounded-md border outline-none flex-1 min-w-48"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border outline-none"
+          className="px-3 py-1.5 text-sm rounded-md border outline-none cursor-pointer"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         >
-          <option value="all">All statuses</option>
-          <option value="pending">Pending</option>
+          <option value="all">All Statuses</option>
           <option value="allocated">Allocated</option>
           <option value="preparing">Preparing</option>
           <option value="out_for_delivery">Out for Delivery</option>
@@ -109,117 +146,190 @@ export default function OrderManagement() {
         <select
           value={branchFilter}
           onChange={(e) => setBranchFilter(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border outline-none"
+          className="px-3 py-1.5 text-sm rounded-md border outline-none cursor-pointer"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         >
-          <option value="all">All branches</option>
-          {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          <option value="all">All Branches</option>
+          {branches.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
         </select>
+        <button
+          onClick={refresh}
+          className="px-3 py-1.5 text-xs rounded-md font-medium text-white cursor-pointer"
+          style={{ background: "var(--primary)" }}
+        >
+          Search
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "var(--muted)" }}>
-              {["Order ID", "Customer", "Items", "Branch", "Total", "Status", "Created", "Actions"].map((h) => (
-                <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((order, i) => {
-              const branch = branches.find((b) => b.id === order.allocatedBranchId);
-              const canAdvance = STATUS_FLOW.includes(order.status as OrderStatus) && order.status !== "delivered" && order.status !== "cancelled";
-              const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status as OrderStatus) + 1];
+      {/* Orders Table */}
+      {loading && !orders.length ? (
+        <div className="p-12 text-center text-sm text-muted-foreground">Loading orders...</div>
+      ) : orders.length === 0 ? (
+        <div className="rounded-lg border p-8 text-center" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+          <p className="text-sm text-muted-foreground">No orders matching the selected filters.</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b" style={{ borderColor: "var(--border)", background: "var(--muted)" }}>
+                  <th className="p-3 font-semibold text-muted-foreground">Order ID</th>
+                  <th className="p-3 font-semibold text-muted-foreground">Customer & Dest</th>
+                  <th className="p-3 font-semibold text-muted-foreground">Allocated Branch</th>
+                  <th className="p-3 font-semibold text-muted-foreground">Score & Rationale</th>
+                  <th className="p-3 font-semibold text-muted-foreground">Total</th>
+                  <th className="p-3 font-semibold text-muted-foreground">Status</th>
+                  <th className="p-3 font-semibold text-muted-foreground text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: "var(--border)" }}>
+                {orders.map((o) => {
+                  const canAdvance = STATUS_FLOW.includes(o.status as OrderStatus) && o.status !== "delivered";
+                  const canCancel = o.status !== "delivered" && o.status !== "cancelled";
 
-              return (
-                <tr
-                  key={order.id}
-                  style={{ background: i % 2 === 0 ? "var(--card)" : "var(--muted)", borderTop: "1px solid var(--border)" }}
-                >
-                  <td className="px-3 py-2.5 font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>{order.id}</td>
-                  <td className="px-3 py-2.5" style={{ color: "var(--foreground)" }}>
-                    <div>{order.customerName}</div>
-                    <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{order.customerLocation.city}</div>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs max-w-36" style={{ color: "var(--muted-foreground)" }}>
-                    {order.items.map((it) => `${it.productName} ×${it.quantity}`).join(", ")}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs" style={{ color: "var(--foreground)" }}>
-                    {branch ? branch.name : <span style={{ color: "var(--muted-foreground)" }}>—</span>}
-                    {order.allocationScore && (
-                      <div className="font-mono text-[10px]" style={{ color: "var(--primary)" }}>Score {order.allocationScore}</div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs font-semibold" style={{ color: "var(--primary)" }}>
-                    LKR {order.total.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2.5"><StatusBadge status={order.status} /></td>
-                  <td className="px-3 py-2.5 text-xs" style={{ color: "var(--muted-foreground)" }}>{timeAgo(order.createdAt)}</td>
-                  <td className="px-3 py-2.5">
-                    {reassigning === order.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={reassignBranch}
-                          onChange={(e) => setReassignBranch(e.target.value)}
-                          className="text-xs px-1.5 py-1 rounded border outline-none"
-                          style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-                        >
-                          <option value="">Select…</option>
-                          {branches.filter((b) => b.isOpen && b.id !== order.allocatedBranchId).map((b) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
-                        <button onClick={() => doReassign(order)} disabled={!reassignBranch} className="text-[10px] px-2 py-1 rounded font-semibold" style={{ background: "var(--primary)", color: "var(--primary-foreground)", opacity: reassignBranch ? 1 : 0.5 }}>Go</button>
-                        <button onClick={() => setReassigning(null)} className="text-[10px] px-2 py-1 rounded border" style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}>✕</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                  return (
+                    <tr key={o.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3 font-mono font-medium" style={{ color: "var(--foreground)" }}>
+                        {o.id}
+                        <div className="text-[10px] text-muted-foreground">{timeAgo(o.createdAt)}</div>
+                      </td>
+
+                      <td className="p-3">
+                        <div className="font-medium" style={{ color: "var(--foreground)" }}>{o.customerName}</div>
+                        <div className="text-muted-foreground">{o.customerLocation?.city}</div>
+                        {o.customerNote && (
+                          <div className="text-[11px] text-purple-400 mt-0.5 truncate max-w-44">
+                            "{o.customerNote}"
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="p-3">
+                        <span className="font-medium" style={{ color: "var(--foreground)" }}>
+                          {o.allocatedBranchName || (o.allocatedBranchId ? o.allocatedBranchId : "Unallocated")}
+                        </span>
+                      </td>
+
+                      <td className="p-3 max-w-xs">
+                        {o.allocationScore !== null ? (
+                          <>
+                            <span className="font-mono px-1.5 py-0.5 rounded bg-emerald-950/50 text-emerald-400 font-semibold border border-emerald-800">
+                              {o.allocationScore}/100
+                            </span>
+                            <div className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
+                              {o.allocationReason}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground italic">None</span>
+                        )}
+                      </td>
+
+                      <td className="p-3 font-mono font-medium" style={{ color: "var(--primary)" }}>
+                        LKR {o.total.toFixed(2)}
+                      </td>
+
+                      <td className="p-3">
+                        <StatusBadge status={o.status} />
+                      </td>
+
+                      <td className="p-3 text-right space-x-1.5 shrink-0">
                         {canAdvance && (
                           <button
-                            onClick={() => advanceStatus(order)}
-                            className="text-[10px] px-2 py-1 rounded border whitespace-nowrap"
-                            style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+                            onClick={() => handleAdvanceStatus(o)}
+                            disabled={actionInProgress === o.id}
+                            className="px-2 py-1 text-[11px] rounded font-medium text-white cursor-pointer disabled:opacity-40"
+                            style={{ background: "var(--primary)" }}
                           >
-                            → {nextStatus?.replace(/_/g, " ")}
+                            Next Step →
                           </button>
                         )}
-                        {order.status !== "cancelled" && order.status !== "delivered" && order.allocatedBranchId && (
+                        {o.status !== "delivered" && o.status !== "cancelled" && (
                           <button
-                            onClick={() => { setReassigning(order.id); setReassignBranch(""); }}
-                            className="text-[10px] px-2 py-1 rounded border"
-                            style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+                            onClick={() => {
+                              setReassigningOrder(o);
+                              setTargetBranchId(o.allocatedBranchId || branches[0]?.id || "");
+                            }}
+                            className="px-2 py-1 text-[11px] rounded border font-medium cursor-pointer"
+                            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
                           >
                             Reassign
                           </button>
                         )}
-                        {order.status !== "cancelled" && order.status !== "delivered" && (
+                        {canCancel && (
                           <button
-                            onClick={() => cancelOrder(order)}
-                            className="text-[10px] px-2 py-1 rounded border"
-                            style={{ borderColor: "#f87171", color: "#f87171" }}
+                            onClick={() => handleCancelOrder(o)}
+                            disabled={actionInProgress === o.id}
+                            className="px-2 py-1 text-[11px] rounded border border-red-800 text-red-400 hover:bg-red-950/30 cursor-pointer disabled:opacity-40"
                           >
                             Cancel
                           </button>
                         )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center py-12 text-sm" style={{ color: "var(--muted-foreground)" }}>No orders match your filters.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
-        Showing {filtered.length} of {orders.length} orders
-      </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Reassign Modal */}
+      {reassigningOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-md rounded-lg border p-6 space-y-4"
+            style={{ background: "var(--card)", borderColor: "var(--border)" }}
+          >
+            <h2 className="text-base font-semibold" style={{ color: "var(--foreground)" }}>
+              Manual Branch Reassignment Override
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Override the smart routing engine for Order <strong className="font-mono">{reassigningOrder.id}</strong>.
+              Stock will be returned to the current branch and deducted from the newly selected branch.
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>
+                Select Target Branch:
+              </label>
+              <select
+                value={targetBranchId}
+                onChange={(e) => setTargetBranchId(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-md border outline-none"
+                style={{ background: "var(--muted)", borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.city}) • Queue: {b.activeOrders}/{b.maxCapacity} {b.isOpen ? "• OPEN" : "• CLOSED"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setReassigningOrder(null)}
+                className="px-3 py-1.5 text-xs rounded border cursor-pointer"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={handleDoReassign}
+                className="px-4 py-1.5 text-xs rounded font-medium text-white cursor-pointer"
+                style={{ background: "var(--primary)" }}
+              >
+                Confirm Reassignment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
