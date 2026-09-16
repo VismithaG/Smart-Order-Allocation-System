@@ -1,14 +1,14 @@
 import type { Branch, Order, Product, User } from "./types";
 
 export const PRODUCTS: Product[] = [
-  { id: "p1", name: "Classic Milk Tea", category: "Drinks", price: 4.5 },
-  { id: "p2", name: "Brown Sugar Milk Tea", category: "Drinks", price: 5.5 },
-  { id: "p3", name: "Chocolate Milk Tea", category: "Drinks", price: 5.0 },
-  { id: "p4", name: "Mango Fruit Tea", category: "Drinks", price: 5.0 },
-  { id: "p5", name: "Taro Milk Tea", category: "Drinks", price: 5.5 },
-  { id: "p6", name: "Matcha Latte", category: "Drinks", price: 6.0 },
-  { id: "p7", name: "Pearl Add-on", category: "Add-ons", price: 0.75 },
-  { id: "p8", name: "Extra Shot", category: "Add-ons", price: 1.0 },
+  { id: "p1", name: "Classic Milk Tea", category: "Drinks", price: 450 },
+  { id: "p2", name: "Brown Sugar Milk Tea", category: "Drinks", price: 550 },
+  { id: "p3", name: "Chocolate Milk Tea", category: "Drinks", price: 500 },
+  { id: "p4", name: "Mango Fruit Tea", category: "Drinks", price: 500 },
+  { id: "p5", name: "Taro Milk Tea", category: "Drinks", price: 550 },
+  { id: "p6", name: "Matcha Latte", category: "Drinks", price: 600 },
+  { id: "p7", name: "Pearl Add-on", category: "Add-ons", price: 150 },
+  { id: "p8", name: "Extra Shot", category: "Add-ons", price: 200 },
 ];
 
 export const INITIAL_BRANCHES: Branch[] = [
