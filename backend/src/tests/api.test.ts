@@ -1,5 +1,6 @@
+process.env.NODE_ENV = "test";
 import assert from "node:assert/strict";
-import { app, server } from "../server.js";
+import { app } from "../server.js";
 import { db } from "../db/database.js";
 import { seedDatabase } from "../db/seed.js";
 import { classifyMessage } from "../services/classifier.js";
@@ -12,7 +13,18 @@ async function runTests() {
   // Reset to known clean seed state
   seedDatabase();
 
-  const baseUrl = "http://localhost:5000";
+  let activeServer: any = null;
+  let baseUrl = "http://localhost:5000";
+
+  // Check if dev server is already running on port 5000; if not, spin up test server on 5002
+  try {
+    const check = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(800) });
+    if (!check.ok) throw new Error("offline");
+  } catch {
+    const TEST_PORT = 5002;
+    activeServer = app.listen(TEST_PORT);
+    baseUrl = `http://localhost:${TEST_PORT}`;
+  }
 
   // 1. Health Check
   console.log("\n[TEST 1] Health Check Endpoint");
@@ -165,12 +177,11 @@ async function runTests() {
   console.log("🎉 ALL 7 INTEGRATION & SECURITY TESTS PASSED 100%!");
   console.log("=================================================\n");
 
-  server.close();
+  if (activeServer) activeServer.close();
   process.exit(0);
 }
 
 runTests().catch((err) => {
   console.error("❌ TEST FAILED:", err);
-  server.close();
   process.exit(1);
 });
