@@ -23,14 +23,18 @@ export interface Product {
 
 export interface BranchStock {
   productId: string;
+  productName?: string;
   quantity: number;
 }
 
 export interface Branch {
   id: string;
   name: string;
-  location: BranchLocation;
-  stock: BranchStock[];
+  city: string;
+  lat: number;
+  lng: number;
+  location?: BranchLocation;
+  stock?: BranchStock[];
   activeOrders: number;
   maxCapacity: number;
   isOpen: boolean;
@@ -51,6 +55,14 @@ export interface OrderItem {
   unitPrice: number;
 }
 
+export interface AllocationBreakdown {
+  stockScore: number;
+  proximityScore: number;
+  workloadScore: number;
+  distanceKm?: number;
+  capacityUtilization?: number;
+}
+
 export interface Order {
   id: string;
   customerId: string;
@@ -60,8 +72,13 @@ export interface Order {
   total: number;
   status: OrderStatus;
   allocatedBranchId: string | null;
+  allocatedBranchName?: string | null;
   allocationScore: number | null;
   allocationReason: string | null;
+  allocationBreakdown?: AllocationBreakdown | null;
+  customerNote?: string;
+  aiCategory?: string;
+  aiConfidence?: number;
   createdAt: string;
   updatedAt: string;
   note?: string;

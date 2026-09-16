@@ -15,14 +15,15 @@ function stockScore(branch: Branch, items: OrderItem[]): number {
   if (items.length === 0) return 0;
   let fulfilled = 0;
   for (const item of items) {
-    const stock = branch.stock.find((s) => s.productId === item.productId);
+    const stock = branch.stock?.find((s) => s.productId === item.productId);
     if (stock && stock.quantity >= item.quantity) fulfilled++;
   }
   return fulfilled / items.length;
 }
 
 function proximityScore(branch: Branch, customerLocation: BranchLocation, maxKm = 300): number {
-  const dist = haversineKm(branch.location, customerLocation);
+  const loc = branch.location || { city: branch.city, lat: branch.lat, lng: branch.lng };
+  const dist = haversineKm(loc, customerLocation);
   return Math.max(0, 1 - dist / maxKm);
 }
 
@@ -70,7 +71,8 @@ export function allocateBranch(
     const ps = proximityScore(b, customerLocation);
     const ws = workloadScore(b);
     const total = WEIGHT_STOCK * ss + WEIGHT_PROXIMITY * ps + WEIGHT_WORKLOAD * ws;
-    const dist = haversineKm(b.location, customerLocation);
+    const loc = b.location || { city: b.city, lat: b.lat, lng: b.lng };
+    const dist = haversineKm(loc, customerLocation);
     return {
       branch: b,
       ss,

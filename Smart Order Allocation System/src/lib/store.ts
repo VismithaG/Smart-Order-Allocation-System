@@ -15,6 +15,9 @@ export const INITIAL_BRANCHES: Branch[] = [
   {
     id: "b1",
     name: "Colombo Fort Branch",
+    city: "Colombo Fort",
+    lat: 6.9344,
+    lng: 79.8428,
     location: { city: "Colombo Fort", lat: 6.9344, lng: 79.8428 },
     stock: [
       { productId: "p1", quantity: 42 },
@@ -33,6 +36,9 @@ export const INITIAL_BRANCHES: Branch[] = [
   {
     id: "b2",
     name: "Kandy City Branch",
+    city: "Kandy",
+    lat: 7.2906,
+    lng: 80.6337,
     location: { city: "Kandy", lat: 7.2906, lng: 80.6337 },
     stock: [
       { productId: "p1", quantity: 30 },
@@ -51,6 +57,9 @@ export const INITIAL_BRANCHES: Branch[] = [
   {
     id: "b3",
     name: "Galle Harbour Branch",
+    city: "Galle",
+    lat: 6.0535,
+    lng: 80.221,
     location: { city: "Galle", lat: 6.0535, lng: 80.221 },
     stock: [
       { productId: "p1", quantity: 55 },
@@ -69,6 +78,9 @@ export const INITIAL_BRANCHES: Branch[] = [
   {
     id: "b4",
     name: "Negombo Beach Branch",
+    city: "Negombo",
+    lat: 7.2088,
+    lng: 79.8358,
     location: { city: "Negombo", lat: 7.2088, lng: 79.8358 },
     stock: [
       { productId: "p1", quantity: 18 },
