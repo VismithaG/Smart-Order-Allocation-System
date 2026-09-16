@@ -86,13 +86,17 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 SOAS Backend Server running on http://localhost:${PORT}`);
-  console.log(`📦 Database: SQLite (Persistent with WAL mode)`);
-  console.log(`🤖 AI Engine: scikit-learn Logistic Regression Model Loaded`);
-  console.log(`====================================================`);
-});
+let server: any = null;
+const isMain = process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.js");
+if (isMain) {
+  server = app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 SOAS Backend Server running on http://localhost:${PORT}`);
+    console.log(`📦 Database: SQLite (Persistent with WAL mode)`);
+    console.log(`🤖 AI Engine: scikit-learn Logistic Regression Model Loaded`);
+    console.log(`====================================================`);
+  });
+}
 
 export { app, server };
 export default app;

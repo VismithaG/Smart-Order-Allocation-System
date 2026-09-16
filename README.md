@@ -33,8 +33,8 @@ A full-stack, distributed order management and intelligent branch routing platfo
 - **Automatic Inventory & Workload Rollback**: Cancelling an order immediately restores reserved stock back to the allocated branch and frees queue capacity.
 - **AI / ML Customer Inquiry Classifier**: `TfidfVectorizer` + `LogisticRegression` pipeline achieving **88.03% 5-fold cross-validation accuracy** across 8 categories with confidence calibration and human escalation flags for scores under 60%.
 - **Dual AI Integration**: Real-time note triage during customer order placement and an interactive Admin Triage Workbench with pre-loaded challenge dataset queries.
-- **Cryptographic Security Layer**: `bcryptjs` password hashing, signed JWT tokens with expiration, Role-Based Access Control (RBAC) middleware, and endpoint rate limiting.
-- **Responsive Web Interface**: Customer ordering flow, live order tracker, admin analytics dashboard, real-time branch capacity meters, live stock editor, and manual branch reassignment overrides.
+- **Multi-Step Customer Ordering Journey**: Progressive 3-stage checkout (`Product Selection` -> `Order Summary & Destination` -> `Simulated Payment Gateway`) with live AI note analysis and immediate algorithmic routing diagnostics.
+- **Responsive Web Interface**: Modern UI with customer ordering flow, live order tracker, admin analytics dashboard, real-time branch capacity meters, live stock editor, and manual branch reassignment overrides.
 
 ---
 
