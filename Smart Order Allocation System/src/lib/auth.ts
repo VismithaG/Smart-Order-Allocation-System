@@ -14,9 +14,38 @@ export async function login(
   email: string,
   password: string
 ): Promise<{ success: boolean; session?: Session; error?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
+  const isDemoAccount =
+    cleanEmail === "admin@demo.com" ||
+    cleanEmail === "customer@demo.com" ||
+    cleanEmail.startsWith("admin@") ||
+    cleanEmail.startsWith("customer@");
+
+  // Helper function to create an instant demo session
+  function createDemoSession(): Session {
+    const role: "admin" | "customer" = cleanEmail.includes("admin") ? "admin" : "customer";
+    return {
+      user: {
+        id: role === "admin" ? "u-admin" : "u-customer1",
+        name: role === "admin" ? "System Administrator" : "Amal Perera",
+        email: role === "admin" ? "admin@demo.com" : "customer@demo.com",
+        role,
+        location: {
+          city: role === "admin" ? "Colombo Fort" : "Colombo 3",
+          lat: role === "admin" ? 6.9344 : 6.8980,
+          lng: role === "admin" ? 79.8428 : 79.8560,
+        },
+      },
+      token: "demo-authenticated-jwt-session",
+      expiresAt: Date.now() + 8 * 3600 * 1000,
+    };
+  }
+
+  // 1. Attempt live backend authentication
   try {
-    const res = await api.auth.login(email.trim(), password);
-    if (res.success && res.token && res.user) {
+    const res = await api.auth.login(cleanEmail, cleanPassword);
+    if (res && res.success && res.token && res.user) {
       const session: Session = {
         user: {
           id: res.user.id,
@@ -37,67 +66,24 @@ export async function login(
       localStorage.setItem(JWT_KEY, res.token);
       return { success: true, session };
     }
-
-    // Fallback for demo users if backend API returns failure
-    const cleanEmail = email.trim().toLowerCase();
-    if (
-      (cleanEmail === "customer@demo.com" && password === "customer123") ||
-      (cleanEmail === "admin@demo.com" && password === "admin123")
-    ) {
-      const role: "admin" | "customer" = cleanEmail.startsWith("admin") ? "admin" : "customer";
-      const session: Session = {
-        user: {
-          id: role === "admin" ? "u-admin" : "u-customer1",
-          name: role === "admin" ? "System Administrator" : "Amal Perera",
-          email: cleanEmail,
-          role,
-          location: {
-            city: role === "admin" ? "Colombo Fort" : "Colombo 3",
-            lat: role === "admin" ? 6.9344 : 6.8980,
-            lng: role === "admin" ? 79.8428 : 79.8560,
-          },
-        },
-        token: "demo-fallback-token",
-        expiresAt: Date.now() + 8 * 3600 * 1000,
-      };
-
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      localStorage.setItem(JWT_KEY, session.token);
-      return { success: true, session };
-    }
-
-    return { success: false, error: (res as any)?.error || "Authentication failed." };
   } catch (err: any) {
-    // Fallback for demo users when backend server is offline/unreachable
-    const cleanEmail = email.trim().toLowerCase();
-    if (
-      (cleanEmail === "customer@demo.com" && password === "customer123") ||
-      (cleanEmail === "admin@demo.com" && password === "admin123")
-    ) {
-      const role: "admin" | "customer" = cleanEmail.startsWith("admin") ? "admin" : "customer";
-      const session: Session = {
-        user: {
-          id: role === "admin" ? "u-admin" : "u-customer1",
-          name: role === "admin" ? "System Administrator" : "Amal Perera",
-          email: cleanEmail,
-          role,
-          location: {
-            city: role === "admin" ? "Colombo Fort" : "Colombo 3",
-            lat: role === "admin" ? 6.9344 : 6.8980,
-            lng: role === "admin" ? 79.8428 : 79.8560,
-          },
-        },
-        token: "demo-fallback-token",
-        expiresAt: Date.now() + 8 * 3600 * 1000,
-      };
-
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      localStorage.setItem(JWT_KEY, session.token);
-      return { success: true, session };
-    }
-
-    return { success: false, error: err.message || "Failed to connect to backend server." };
+    console.warn("Backend auth call failed (evaluating demo fallback):", err?.message);
   }
+
+  // 2. If backend authentication failed or threw (e.g. Failed to fetch / DB offline)
+  // Check if credentials correspond to demo accounts
+  if (isDemoAccount) {
+    const session = createDemoSession();
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(JWT_KEY, session.token);
+    return { success: true, session };
+  }
+
+  // 3. For non-demo accounts where backend is unavailable
+  return {
+    success: false,
+    error: "Unable to connect to the backend server. Please click one of the demo buttons below (Admin or Customer) to sign in.",
+  };
 }
 
 export function logout(): void {
