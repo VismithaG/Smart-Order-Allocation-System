@@ -74,35 +74,37 @@ export default function OrderHistory() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-5 flex-wrap">
+      <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
         <input
           type="search"
           placeholder="Search by order ID or product name…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border outline-none flex-1 min-w-48"
+          className="px-3 py-2 text-sm rounded-md border outline-none flex-1 min-w-0"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border outline-none cursor-pointer"
-          style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-        >
-          <option value="all">All Statuses</option>
-          <option value="allocated">Allocated</option>
-          <option value="preparing">Preparing</option>
-          <option value="out_for_delivery">Out for Delivery</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <button
-          onClick={loadOrders}
-          className="px-3 py-1.5 text-xs rounded-md border font-medium cursor-pointer"
-          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
-        >
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 sm:flex-initial px-3 py-2 text-sm rounded-md border outline-none cursor-pointer"
+            style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            <option value="all">All Statuses</option>
+            <option value="allocated">Allocated</option>
+            <option value="preparing">Preparing</option>
+            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button
+            onClick={loadOrders}
+            className="px-3 py-2 text-xs rounded-md border font-medium cursor-pointer shrink-0"
+            style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
+          >
+            ↻ Refresh
+          </button>
+        </div>
       </div>
 
       {/* Orders List */}

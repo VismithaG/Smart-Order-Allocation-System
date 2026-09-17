@@ -220,13 +220,13 @@ export default function ProductManagement() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-lg border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-lg border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto py-0.5 scrollbar-none touch-pan-x">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                 selectedCategory === cat
                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "hover:bg-muted text-muted-foreground"
@@ -241,7 +241,7 @@ export default function ProductManagement() {
           ))}
         </div>
 
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-64 shrink-0">
           <input
             type="text"
             placeholder="Search products..."

@@ -245,43 +245,45 @@ export default function OrderManagement() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <input
           type="search"
           placeholder="Search order ID, customer name, note…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && refresh()}
-          className="px-3 py-1.5 text-xs rounded-md border outline-none flex-1 min-w-48"
+          className="px-3 py-2 text-xs rounded-md border outline-none flex-1 min-w-0"
           style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-md border outline-none cursor-pointer"
-          style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-        >
-          <option value="all">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="allocated">Allocated</option>
-          <option value="preparing">Preparing</option>
-          <option value="out_for_delivery">Out for Delivery</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <select
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-md border outline-none cursor-pointer"
-          style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-        >
-          <option value="all">All Branches</option>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 sm:flex-initial px-3 py-2 text-xs rounded-md border outline-none cursor-pointer"
+            style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="allocated">Allocated</option>
+            <option value="preparing">Preparing</option>
+            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="flex-1 sm:flex-initial px-3 py-2 text-xs rounded-md border outline-none cursor-pointer"
+            style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            <option value="all">All Branches</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}

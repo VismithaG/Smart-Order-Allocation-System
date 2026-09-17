@@ -283,72 +283,82 @@ export default function NewOrder() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Checkout Steps Indicator */}
-      <div className="flex items-center justify-center gap-3 sm:gap-6 py-2 border-b" style={{ borderColor: "var(--border)" }}>
-        <button
-          onClick={() => setStep("products")}
-          className="flex items-center gap-2 text-xs font-semibold cursor-pointer transition-colors"
-          style={{ color: step === "products" ? "var(--primary)" : "var(--muted-foreground)" }}
-        >
-          <span
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+      <div className="py-2 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-4 max-w-xl mx-auto">
+          {/* Step 1 */}
+          <button
+            onClick={() => setStep("products")}
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5 p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${
               step === "products"
-                ? "bg-primary text-black font-bold"
-                : "bg-muted text-muted-foreground border border-border"
+                ? "border-primary/50 bg-primary/10 text-primary shadow-xs"
+                : "border-transparent text-muted-foreground hover:bg-muted/40"
             }`}
           >
-            1
-          </span>
-          <span>Select Products</span>
-          {totalItemsCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary/20 text-primary font-mono">
-              {totalItemsCount}
+            <span
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs shrink-0 ${
+                step === "products"
+                  ? "bg-primary text-black font-bold"
+                  : "bg-muted text-muted-foreground border border-border"
+              }`}
+            >
+              1
             </span>
-          )}
-        </button>
+            <span className="truncate">Products</span>
+            {totalItemsCount > 0 && (
+              <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[10px] bg-primary/20 text-primary font-mono">
+                {totalItemsCount}
+              </span>
+            )}
+          </button>
 
-        <span className="text-muted-foreground text-xs">───</span>
-
-        <button
-          onClick={() => {
-            if (totalItemsCount > 0) setStep("summary");
-          }}
-          disabled={totalItemsCount === 0}
-          className="flex items-center gap-2 text-xs font-semibold disabled:opacity-40 cursor-pointer transition-colors"
-          style={{ color: step === "summary" ? "var(--primary)" : "var(--muted-foreground)" }}
-        >
-          <span
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+          {/* Step 2 */}
+          <button
+            onClick={() => {
+              if (totalItemsCount > 0) setStep("summary");
+            }}
+            disabled={totalItemsCount === 0}
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5 p-2 rounded-lg text-xs font-semibold disabled:opacity-30 cursor-pointer transition-all border ${
               step === "summary"
-                ? "bg-primary text-black font-bold"
-                : "bg-muted text-muted-foreground border border-border"
+                ? "border-primary/50 bg-primary/10 text-primary shadow-xs"
+                : "border-transparent text-muted-foreground hover:bg-muted/40"
             }`}
           >
-            2
-          </span>
-          <span>Order Summary</span>
-        </button>
+            <span
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs shrink-0 ${
+                step === "summary"
+                  ? "bg-primary text-black font-bold"
+                  : "bg-muted text-muted-foreground border border-border"
+              }`}
+            >
+              2
+            </span>
+            <span className="truncate">Summary</span>
+          </button>
 
-        <span className="text-muted-foreground text-xs">───</span>
-
-        <button
-          onClick={() => {
-            if (totalItemsCount > 0) setStep("payment");
-          }}
-          disabled={totalItemsCount === 0}
-          className="flex items-center gap-2 text-xs font-semibold disabled:opacity-40 cursor-pointer transition-colors"
-          style={{ color: step === "payment" ? "var(--primary)" : "var(--muted-foreground)" }}
-        >
-          <span
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+          {/* Step 3 */}
+          <button
+            onClick={() => {
+              if (totalItemsCount > 0) setStep("payment");
+            }}
+            disabled={totalItemsCount === 0}
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5 p-2 rounded-lg text-xs font-semibold disabled:opacity-30 cursor-pointer transition-all border ${
               step === "payment"
-                ? "bg-primary text-black font-bold"
-                : "bg-muted text-muted-foreground border border-border"
+                ? "border-primary/50 bg-primary/10 text-primary shadow-xs"
+                : "border-transparent text-muted-foreground hover:bg-muted/40"
             }`}
           >
-            3
-          </span>
-          <span>Payment</span>
-        </button>
+            <span
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs shrink-0 ${
+                step === "payment"
+                  ? "bg-primary text-black font-bold"
+                  : "bg-muted text-muted-foreground border border-border"
+              }`}
+            >
+              3
+            </span>
+            <span className="truncate">Payment</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -371,12 +381,12 @@ export default function NewOrder() {
             </div>
 
             {/* Category Filter Pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none -mx-1 px-1 touch-pan-x">
               {categories.map((c) => (
                 <button
                   key={c}
                   onClick={() => setSelectedCategory(c)}
-                  className="px-3 py-1 text-xs rounded-full border transition-all cursor-pointer whitespace-nowrap"
+                  className="px-3.5 py-1.5 text-xs rounded-full border transition-all cursor-pointer whitespace-nowrap shrink-0"
                   style={{
                     background: selectedCategory === c ? "var(--primary)" : "var(--card)",
                     color: selectedCategory === c ? "#000" : "var(--muted-foreground)",
