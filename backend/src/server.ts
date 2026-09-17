@@ -128,13 +128,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 let server: any = null;
 const isMain = process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.js");
 if (isMain) {
-  server = app.listen(PORT, () => {
+  const listenPort = Number(process.env.PORT) || 5000;
+  server = app.listen(listenPort, "0.0.0.0", () => {
     console.log(`====================================================`);
-    console.log(`🚀 SOAS Backend Server running on http://localhost:${PORT}`);
+    console.log(`🚀 SOAS Backend Server listening on 0.0.0.0:${listenPort}`);
     console.log(`🐘 Database: ${process.env.DATABASE_URL ? "Cloud PostgreSQL" : "Local PostgreSQL"}`);
     console.log(`🤖 AI Engine: Active`);
     if (frontendDist) {
-      console.log(`🌐 Web UI: Active on http://localhost:${PORT}`);
+      console.log(`🌐 Web UI: Active and served from ${frontendDist}`);
     }
     console.log(`====================================================`);
   });
