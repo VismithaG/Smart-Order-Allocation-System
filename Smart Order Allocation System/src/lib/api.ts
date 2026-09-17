@@ -1,4 +1,23 @@
-import { PRODUCTS, getBranches, getOrders, DEMO_USERS, addOrder } from "./store";
+import {
+  getProductsStore,
+  saveProductsStore,
+  addProductStore,
+  updateProductStore,
+  deleteProductStore,
+  getUsersStore,
+  addUserStore,
+  updateUserStore,
+  deleteUserStore,
+  getBranches,
+  saveBranches,
+  updateBranch,
+  getOrders,
+  saveOrders,
+  addOrder,
+  updateOrder,
+  deleteOrder,
+  Product,
+} from "./store";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -50,27 +69,85 @@ export const api = {
       try {
         const res = await request<{ success: boolean; products: any[] }>("/products");
         if (res && res.success && Array.isArray(res.products) && res.products.length > 0) {
+          saveProductsStore(res.products);
           return res;
         }
-        return { success: true, products: PRODUCTS };
+        return { success: true, products: getProductsStore() };
       } catch {
-        return { success: true, products: PRODUCTS };
+        return { success: true, products: getProductsStore() };
       }
     },
-    create: (payload: { name: string; category: string; price: number; imageUrl?: string }) =>
-      request<{ success: boolean; message: string; product: any }>("/products", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    update: (id: string, payload: { name: string; category: string; price: number; imageUrl?: string }) =>
-      request<{ success: boolean; message: string; product: any }>(`/products/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-    delete: (id: string) =>
-      request<{ success: boolean; message: string }>(`/products/${id}`, {
-        method: "DELETE",
-      }),
+    create: async (payload: { name: string; category: string; price: number; imageUrl?: string }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; product: any }>("/products", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (res && res.success && res.product) {
+          addProductStore(res.product);
+          return res;
+        }
+        throw new Error(res?.message || "Failed to create product");
+      } catch {
+        const newProduct: Product = {
+          id: `p-${Date.now().toString(36)}`,
+          name: payload.name.trim(),
+          category: payload.category.trim(),
+          price: payload.price,
+          imageUrl: payload.imageUrl?.trim() || "",
+        };
+        addProductStore(newProduct);
+
+        // Distribute stock across branches
+        const branches = getBranches();
+        branches.forEach((b) => {
+          if (!b.stock) b.stock = [];
+          if (!b.stock.some((s) => s.productId === newProduct.id)) {
+            b.stock.push({ productId: newProduct.id, quantity: 20 });
+          }
+        });
+        saveBranches(branches);
+
+        return {
+          success: true,
+          message: "Product created successfully.",
+          product: newProduct,
+        };
+      }
+    },
+    update: async (id: string, payload: { name: string; category: string; price: number; imageUrl?: string }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; product: any }>(`/products/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        if (res && res.success && res.product) {
+          updateProductStore(id, res.product);
+          return res;
+        }
+        throw new Error(res?.message || "Failed to update product");
+      } catch {
+        updateProductStore(id, payload);
+        const updated = getProductsStore().find((p) => p.id === id);
+        return {
+          success: true,
+          message: "Product updated successfully.",
+          product: updated || { id, ...payload },
+        };
+      }
+    },
+    delete: async (id: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string }>(`/products/${id}`, {
+          method: "DELETE",
+        });
+        deleteProductStore(id);
+        return res;
+      } catch {
+        deleteProductStore(id);
+        return { success: true, message: "Product deleted successfully." };
+      }
+    },
   },
 
   branches: {
@@ -78,6 +155,7 @@ export const api = {
       try {
         const res = await request<{ success: boolean; branches: any[] }>("/branches");
         if (res && res.success && Array.isArray(res.branches) && res.branches.length > 0) {
+          saveBranches(res.branches);
           return res;
         }
         return { success: true, branches: getBranches() };
@@ -85,34 +163,135 @@ export const api = {
         return { success: true, branches: getBranches() };
       }
     },
-    create: (payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) =>
-      request<{ success: boolean; message: string; branch: any }>("/branches", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    update: (id: string, payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) =>
-      request<{ success: boolean; message: string; branch: any }>(`/branches/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-    delete: (id: string) =>
-      request<{ success: boolean; message: string }>(`/branches/${id}`, {
-        method: "DELETE",
-      }),
+    create: async (payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; branch: any }>("/branches", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (res && res.success && res.branch) {
+          const list = getBranches();
+          list.push(res.branch);
+          saveBranches(list);
+          return res;
+        }
+        throw new Error(res?.message || "Failed to create branch");
+      } catch {
+        const newBranch = {
+          id: `b-${Date.now().toString(36)}`,
+          name: payload.name.trim(),
+          city: payload.city.trim(),
+          lat: payload.lat,
+          lng: payload.lng,
+          location: { city: payload.city.trim(), lat: payload.lat, lng: payload.lng },
+          activeOrders: 0,
+          maxCapacity: payload.maxCapacity || 15,
+          isOpen: true,
+          stock: getProductsStore().map((p) => ({ productId: p.id, quantity: 25 })),
+        };
+        const list = getBranches();
+        list.push(newBranch as any);
+        saveBranches(list);
+        return {
+          success: true,
+          message: "Branch created successfully.",
+          branch: newBranch,
+        };
+      }
+    },
+    update: async (id: string, payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; branch: any }>(`/branches/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        updateBranch(id, payload);
+        return res;
+      } catch {
+        updateBranch(id, payload);
+        const branch = getBranches().find((b) => b.id === id);
+        return {
+          success: true,
+          message: "Branch updated successfully.",
+          branch,
+        };
+      }
+    },
+    delete: async (id: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string }>(`/branches/${id}`, {
+          method: "DELETE",
+        });
+        const list = getBranches().filter((b) => b.id !== id);
+        saveBranches(list);
+        return res;
+      } catch {
+        const list = getBranches().filter((b) => b.id !== id);
+        saveBranches(list);
+        return { success: true, message: "Branch deleted successfully." };
+      }
+    },
     getStock: (branchId: string) =>
       request<{ success: boolean; branch: any; stock: any[] }>(`/branches/${branchId}/stock`).catch(() => {
         const branch = getBranches().find((b) => b.id === branchId);
         return { success: true, branch, stock: branch?.stock || [] };
       }),
-    updateStock: (branchId: string, productId: string, quantity: number) =>
-      request<{ success: boolean; message: string }>(`/branches/${branchId}/stock`, {
-        method: "PUT",
-        body: JSON.stringify({ productId, quantity }),
-      }),
-    toggleStatus: (branchId: string) =>
-      request<{ success: boolean; isOpen: boolean; message: string }>(`/branches/${branchId}/toggle`, {
-        method: "PATCH",
-      }),
+    updateStock: async (branchId: string, productId: string, quantity: number) => {
+      try {
+        const res = await request<{ success: boolean; message: string }>(`/branches/${branchId}/stock`, {
+          method: "PUT",
+          body: JSON.stringify({ productId, quantity }),
+        });
+        // Sync local
+        const branches = getBranches();
+        const b = branches.find((br) => br.id === branchId);
+        if (b && b.stock) {
+          const s = b.stock.find((st) => st.productId === productId);
+          if (s) s.quantity = quantity;
+          else b.stock.push({ productId, quantity });
+          saveBranches(branches);
+        }
+        return res;
+      } catch {
+        const branches = getBranches();
+        const b = branches.find((br) => br.id === branchId);
+        if (b && b.stock) {
+          const s = b.stock.find((st) => st.productId === productId);
+          if (s) s.quantity = quantity;
+          else b.stock.push({ productId, quantity });
+          saveBranches(branches);
+        }
+        return { success: true, message: "Stock updated successfully." };
+      }
+    },
+    toggleStatus: async (branchId: string) => {
+      try {
+        const res = await request<{ success: boolean; isOpen: boolean; message: string }>(`/branches/${branchId}/toggle`, {
+          method: "PATCH",
+        });
+        const branches = getBranches();
+        const b = branches.find((br) => br.id === branchId);
+        if (b) {
+          b.isOpen = res.isOpen;
+          saveBranches(branches);
+        }
+        return res;
+      } catch {
+        const branches = getBranches();
+        const b = branches.find((br) => br.id === branchId);
+        let newStatus = true;
+        if (b) {
+          b.isOpen = !b.isOpen;
+          newStatus = b.isOpen;
+          saveBranches(branches);
+        }
+        return {
+          success: true,
+          isOpen: newStatus,
+          message: `Branch status toggled to ${newStatus ? "OPEN" : "CLOSED"}.`,
+        };
+      }
+    },
   },
 
   users: {
@@ -120,96 +299,102 @@ export const api = {
       try {
         const res = await request<{ success: boolean; users: any[] }>("/users");
         if (res && res.success && Array.isArray(res.users) && res.users.length > 0) {
+          saveUsersStore(res.users);
           return res;
         }
-        throw new Error("No backend users");
+        return { success: true, users: getUsersStore() };
       } catch {
-        const fallbackUsers = [
-          {
-            id: "u-admin",
-            name: "System Administrator",
-            email: "admin@demo.com",
-            role: "admin",
-            city: "Colombo Fort",
-            lat: 6.9344,
-            lng: 79.8428,
-            orderCount: 14,
-            totalSpent: 12500.0,
-            createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: "u-customer1",
-            name: "Amal Perera",
-            email: "customer@demo.com",
-            role: "customer",
-            city: "Colombo 3",
-            lat: 6.8980,
-            lng: 79.8560,
-            orderCount: 4,
-            totalSpent: 4200.0,
-            createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: "u-customer2",
-            name: "Nimal Silva",
-            email: "nimal@demo.com",
-            role: "customer",
-            city: "Kandy City",
-            lat: 7.2906,
-            lng: 80.6337,
-            orderCount: 2,
-            totalSpent: 1800.0,
-            createdAt: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: "u-customer3",
-            name: "Kamala Fernando",
-            email: "kamala@demo.com",
-            role: "customer",
-            city: "Galle",
-            lat: 6.0535,
-            lng: 80.2210,
-            orderCount: 1,
-            totalSpent: 950.0,
-            createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-          },
-        ];
-        return { success: true, users: fallbackUsers };
+        return { success: true, users: getUsersStore() };
       }
     },
-    create: (payload: { name: string; email: string; password: string; role?: string; city?: string; lat?: number; lng?: number }) =>
-      request<{ success: boolean; message: string; user: any }>("/users", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    update: (id: string, payload: { name: string; email?: string; password?: string; role?: string; city?: string; lat?: number; lng?: number }) =>
-      request<{ success: boolean; message: string; user: any }>(`/users/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-    delete: (id: string) =>
-      request<{ success: boolean; message: string }>(`/users/${id}`, {
-        method: "DELETE",
-      }),
+    create: async (payload: { name: string; email: string; password: string; role?: string; city?: string; lat?: number; lng?: number }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; user: any }>("/users", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (res && res.success && res.user) {
+          addUserStore(res.user);
+          return res;
+        }
+        throw new Error(res?.message || "Failed to create user");
+      } catch {
+        const newUser = {
+          id: `u-${Date.now().toString(36)}`,
+          name: payload.name.trim(),
+          email: payload.email.trim().toLowerCase(),
+          role: payload.role || "customer",
+          city: payload.city || "Colombo",
+          lat: payload.lat || 6.9271,
+          lng: payload.lng || 79.8612,
+          orderCount: 0,
+          totalSpent: 0,
+          createdAt: new Date().toISOString(),
+        };
+        addUserStore(newUser);
+        return {
+          success: true,
+          message: "User created successfully.",
+          user: newUser,
+        };
+      }
+    },
+    update: async (id: string, payload: { name: string; email?: string; password?: string; role?: string; city?: string; lat?: number; lng?: number }) => {
+      try {
+        const res = await request<{ success: boolean; message: string; user: any }>(`/users/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        updateUserStore(id, payload);
+        return res;
+      } catch {
+        updateUserStore(id, payload);
+        const user = getUsersStore().find((u) => u.id === id);
+        return {
+          success: true,
+          message: "User updated successfully.",
+          user: user || { id, ...payload },
+        };
+      }
+    },
+    delete: async (id: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string }>(`/users/${id}`, {
+          method: "DELETE",
+        });
+        deleteUserStore(id);
+        return res;
+      } catch {
+        deleteUserStore(id);
+        return { success: true, message: "User deleted successfully." };
+      }
+    },
   },
 
   orders: {
     create: async (payload: { items: { productId: string; quantity: number }[]; customerLocation: { city: string; lat: number; lng: number }; note?: string }) => {
       try {
-        return await request<{ success: boolean; message: string; order?: any; allocation?: any; evaluations?: any[]; status?: string }>("/orders", {
+        const res = await request<{ success: boolean; message: string; order?: any; allocation?: any; evaluations?: any[]; status?: string }>("/orders", {
           method: "POST",
           body: JSON.stringify(payload),
         });
+        if (res && res.success && res.order) {
+          addOrder(res.order);
+          return res;
+        }
+        throw new Error(res?.message || "Failed to create order");
       } catch {
         const branches = getBranches();
         const openBranch = branches.find((b) => b.isOpen) || branches[0];
+        const products = getProductsStore();
         const newOrder = {
           id: `ord-${Date.now().toString(36).toUpperCase()}`,
           customerId: "u1",
           customerName: "Amal Perera",
           customerLocation: payload.customerLocation,
+          customerNote: payload.note || "",
           items: payload.items.map((item) => {
-            const p = PRODUCTS.find((prod) => prod.id === item.productId);
+            const p = products.find((prod) => prod.id === item.productId);
             return {
               productId: item.productId,
               productName: p ? p.name : "Item",
@@ -218,7 +403,7 @@ export const api = {
             };
           }),
           total: payload.items.reduce((sum, item) => {
-            const p = PRODUCTS.find((prod) => prod.id === item.productId);
+            const p = products.find((prod) => prod.id === item.productId);
             return sum + (p ? p.price * item.quantity : 400 * item.quantity);
           }, 0),
           status: "allocated" as const,
@@ -265,20 +450,62 @@ export const api = {
         const order = getOrders().find((o) => o.id === orderId);
         return { success: true, order };
       }),
-    updateStatus: (orderId: string, status: string) =>
-      request<{ success: boolean; message: string; status: string }>(`/orders/${orderId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      }),
-    cancel: (orderId: string) =>
-      request<{ success: boolean; message: string; status: string }>(`/orders/${orderId}/cancel`, {
-        method: "POST",
-      }),
-    reassign: (orderId: string, newBranchId: string) =>
-      request<{ success: boolean; message: string; allocatedBranchId: string; allocatedBranchName: string }>(`/orders/${orderId}/reassign`, {
-        method: "POST",
-        body: JSON.stringify({ newBranchId }),
-      }),
+    updateStatus: async (orderId: string, status: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string; status: string }>(`/orders/${orderId}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        });
+        updateOrder(orderId, { status: status as any });
+        return res;
+      } catch {
+        updateOrder(orderId, { status: status as any });
+        return { success: true, message: `Status updated to ${status}.`, status };
+      }
+    },
+    cancel: async (orderId: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string; status: string }>(`/orders/${orderId}/cancel`, {
+          method: "POST",
+        });
+        updateOrder(orderId, { status: "cancelled" });
+        return res;
+      } catch {
+        updateOrder(orderId, { status: "cancelled" });
+        return { success: true, message: "Order cancelled.", status: "cancelled" };
+      }
+    },
+    delete: async (orderId: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string }>(`/orders/${orderId}`, {
+          method: "DELETE",
+        });
+        deleteOrder(orderId);
+        return res;
+      } catch {
+        deleteOrder(orderId);
+        return { success: true, message: "Order deleted successfully." };
+      }
+    },
+    reassign: async (orderId: string, newBranchId: string) => {
+      try {
+        const res = await request<{ success: boolean; message: string; allocatedBranchId: string; allocatedBranchName: string }>(`/orders/${orderId}/reassign`, {
+          method: "POST",
+          body: JSON.stringify({ newBranchId }),
+        });
+        updateOrder(orderId, { allocatedBranchId: newBranchId });
+        return res;
+      } catch {
+        const branch = getBranches().find((b) => b.id === newBranchId);
+        updateOrder(orderId, { allocatedBranchId: newBranchId });
+        return {
+          success: true,
+          message: `Order reassigned to ${branch?.name || "branch"}.`,
+          allocatedBranchId: newBranchId,
+          allocatedBranchName: branch?.name || "branch",
+        };
+      }
+    },
   },
 
   dashboard: {

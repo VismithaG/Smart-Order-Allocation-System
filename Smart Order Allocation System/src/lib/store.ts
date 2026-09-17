@@ -203,6 +203,8 @@ const SEED_ORDERS: Order[] = [
 
 const BRANCHES_KEY = "soas_branches";
 const ORDERS_KEY = "soas_orders";
+const PRODUCTS_KEY = "soas_products";
+const USERS_KEY = "soas_users";
 
 function initStore<T>(key: string, defaults: T[]): T[] {
   try {
@@ -219,6 +221,112 @@ export function getBranches(): Branch[] {
 
 export function saveBranches(branches: Branch[]): void {
   localStorage.setItem(BRANCHES_KEY, JSON.stringify(branches));
+}
+
+export function getProductsStore(): Product[] {
+  return initStore<Product>(PRODUCTS_KEY, PRODUCTS);
+}
+
+export function saveProductsStore(products: Product[]): void {
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+}
+
+export function addProductStore(product: Product): void {
+  const list = getProductsStore();
+  list.push(product);
+  saveProductsStore(list);
+}
+
+export function updateProductStore(productId: string, patch: Partial<Product>): void {
+  const list = getProductsStore();
+  const idx = list.findIndex((p) => p.id === productId);
+  if (idx !== -1) {
+    list[idx] = { ...list[idx], ...patch };
+    saveProductsStore(list);
+  }
+}
+
+export function deleteProductStore(productId: string): void {
+  const list = getProductsStore().filter((p) => p.id !== productId);
+  saveProductsStore(list);
+}
+
+export function getUsersStore(): any[] {
+  const defaults = [
+    {
+      id: "u-admin",
+      name: "System Administrator",
+      email: "admin@demo.com",
+      role: "admin",
+      city: "Colombo Fort",
+      lat: 6.9344,
+      lng: 79.8428,
+      orderCount: 14,
+      totalSpent: 12500.0,
+      createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: "u-customer1",
+      name: "Amal Perera",
+      email: "customer@demo.com",
+      role: "customer",
+      city: "Colombo 3",
+      lat: 6.8980,
+      lng: 79.8560,
+      orderCount: 4,
+      totalSpent: 4200.0,
+      createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: "u-customer2",
+      name: "Nimal Silva",
+      email: "nimal@demo.com",
+      role: "customer",
+      city: "Kandy City",
+      lat: 7.2906,
+      lng: 80.6337,
+      orderCount: 2,
+      totalSpent: 1800.0,
+      createdAt: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: "u-customer3",
+      name: "Kamala Fernando",
+      email: "kamala@demo.com",
+      role: "customer",
+      city: "Galle",
+      lat: 6.0535,
+      lng: 80.2210,
+      orderCount: 1,
+      totalSpent: 950.0,
+      createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+    },
+  ];
+  return initStore<any>(USERS_KEY, defaults);
+}
+
+export function saveUsersStore(users: any[]): void {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+export function addUserStore(user: any): void {
+  const list = getUsersStore();
+  list.unshift(user);
+  saveUsersStore(list);
+}
+
+export function updateUserStore(userId: string, patch: any): void {
+  const list = getUsersStore();
+  const idx = list.findIndex((u) => u.id === userId);
+  if (idx !== -1) {
+    list[idx] = { ...list[idx], ...patch };
+    saveUsersStore(list);
+  }
+}
+
+export function deleteUserStore(userId: string): void {
+  const list = getUsersStore().filter((u) => u.id !== userId);
+  saveUsersStore(list);
 }
 
 export function getOrders(): Order[] {
@@ -242,6 +350,11 @@ export function updateOrder(orderId: string, patch: Partial<Order>): void {
     orders[idx] = { ...orders[idx], ...patch, updatedAt: new Date().toISOString() };
     saveOrders(orders);
   }
+}
+
+export function deleteOrder(orderId: string): void {
+  const orders = getOrders().filter((o) => o.id !== orderId);
+  saveOrders(orders);
 }
 
 export function updateBranch(branchId: string, patch: Partial<Branch>): void {

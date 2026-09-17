@@ -599,4 +599,84 @@ router.post("/:id/reassign", authenticateToken, requireRole("admin"), async (req
   }
 });
 
+// DELETE /api/orders/:id - Admin Delete Order
+router.delete("/:id", authenticateToken, requireRole("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = String(req.params.id);
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN;");
+    const check = await client.query("SELECT id, status, allocated_branch_id FROM orders WHERE id = $1", [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Order not found." });
+      return;
+    }
+
+    const order = check.rows[0];
+    // If order was in active progress, decrement branch active orders
+    if (order.allocated_branch_id && order.status !== "delivered" && order.status !== "cancelled") {
+      await client.query(
+        "UPDATE branches SET active_orders = GREATEST(0, active_orders - 1) WHERE id = $1",
+        [order.allocated_branch_id]
+      );
+    }
+
+    // Delete order (order_items cascades)
+    await client.query("DELETE FROM orders WHERE id = $1", [id]);
+    await client.query("COMMIT;");
+
+    res.json({ success: true, message: `Order ${id} deleted successfully.` });
+  } catch (err: any) {
+    await client.query("ROLLBACK;");
+    console.error("Delete order error:", err);
+    res.status(500).json({ success: false, error: "Failed to delete order." });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /api/orders/:id - Admin Edit Order Details
+router.put("/:id", authenticateToken, requireRole("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = String(req.params.id);
+  const { status, note, allocatedBranchId } = req.body;
+
+  try {
+    const check = await query("SELECT id FROM orders WHERE id = $1", [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Order not found." });
+      return;
+    }
+
+    const updates: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (status) {
+      updates.push(`status = $${idx++}`);
+      params.push(status);
+    }
+    if (note !== undefined) {
+      updates.push(`customer_note = $${idx++}`);
+      params.push(note);
+    }
+    if (allocatedBranchId !== undefined) {
+      updates.push(`allocated_branch_id = $${idx++}`);
+      params.push(allocatedBranchId || null);
+    }
+
+    updates.push("updated_at = NOW()");
+    params.push(id);
+
+    await query(
+      `UPDATE orders SET ${updates.join(", ")} WHERE id = $${idx}`,
+      params
+    );
+
+    res.json({ success: true, message: `Order ${id} updated successfully.` });
+  } catch (err: any) {
+    console.error("Update order error:", err);
+    res.status(500).json({ success: false, error: "Failed to update order." });
+  }
+});
+
 export default router;
