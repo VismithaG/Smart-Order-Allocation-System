@@ -28,3 +28,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+node_modules/
+dist/
+.env
