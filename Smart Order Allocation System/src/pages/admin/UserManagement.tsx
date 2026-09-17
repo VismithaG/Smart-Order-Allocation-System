@@ -52,7 +52,7 @@ export default function UserManagement() {
           setUsers(res.users);
         }
       })
-      .catch((err) => showToast(err.message || "Failed to load users", "error"))
+      .catch((err) => console.warn("Could not sync with remote users API, local store active:", err?.message))
       .finally(() => setLoading(false));
   }
 

@@ -42,7 +42,7 @@ export default function ProductManagement() {
           setProducts(res.products);
         }
       })
-      .catch((err) => showToast(err.message || "Failed to load products", "error"))
+      .catch((err) => console.warn("Could not sync with remote products API, local store active:", err?.message))
       .finally(() => setLoading(false));
   }
 
