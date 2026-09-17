@@ -20,11 +20,7 @@ export async function login(
     cleanEmail === "admin@demo.com" ||
     cleanEmail === "customer@demo.com" ||
     cleanEmail === "admin" ||
-    cleanEmail === "customer" ||
-    cleanEmail.startsWith("admin@") ||
-    cleanEmail.startsWith("customer@") ||
-    cleanEmail.includes("admin") ||
-    cleanEmail.includes("demo");
+    cleanEmail === "customer";
 
   // Helper function to create an instant demo session
   function createDemoSession(): Session {

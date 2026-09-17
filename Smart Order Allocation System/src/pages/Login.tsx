@@ -20,15 +20,11 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
         onLogin(result.session.user.role);
         navigate(result.session.user.role === "admin" ? "/admin" : "/orders/new");
       } else {
-        setError(result.error || "Login failed.");
+        setError(result.error || "Invalid email or password. Please try again.");
       }
     } catch (err: any) {
       const msg = err?.message || "";
-      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network")) {
-        setError("Backend server is currently offline. Please sign in using the Admin or Customer demo credentials below.");
-      } else {
-        setError(msg || "Failed to sign in.");
-      }
+      setError(msg || "Failed to sign in. Please verify your credentials.");
     } finally {
       setLoading(false);
     }

@@ -171,14 +171,12 @@ router.post("/login", async (req, res: Response): Promise<void> => {
     }
   }
 
-  // 3. Demo accounts wildcard fallback
+  // 3. Demo accounts fallback (exact demo accounts only)
   if (
     cleanEmail === "admin@demo.com" ||
     cleanEmail === "customer@demo.com" ||
     cleanEmail === "admin" ||
-    cleanEmail === "customer" ||
-    cleanEmail.startsWith("admin@") ||
-    cleanEmail.startsWith("customer@")
+    cleanEmail === "customer"
   ) {
     const role: "admin" | "customer" = cleanEmail.includes("admin") ? "admin" : "customer";
     const demoUser: User = {
