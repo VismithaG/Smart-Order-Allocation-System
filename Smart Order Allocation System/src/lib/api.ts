@@ -315,7 +315,7 @@ export const api = {
           body: JSON.stringify(payload),
         });
         if (res && res.success && res.user) {
-          addUserStore(res.user);
+          addUserStore({ ...res.user, password: payload.password });
           return res;
         }
         throw new Error(res?.message || "Failed to create user");
@@ -324,6 +324,7 @@ export const api = {
           id: `u-${Date.now().toString(36)}`,
           name: payload.name.trim(),
           email: payload.email.trim().toLowerCase(),
+          password: payload.password,
           role: payload.role || "customer",
           city: payload.city || "Colombo",
           lat: payload.lat || 6.9271,

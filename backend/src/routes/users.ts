@@ -2,60 +2,16 @@ import { Router, Response } from "express";
 import bcrypt from "bcryptjs";
 import { query } from "../db/database.js";
 import { authenticateToken, requireRole, AuthRequest } from "../middleware/auth.js";
+import {
+  getMemoryUsers,
+  findMemoryUserByEmail,
+  findMemoryUserById,
+  addMemoryUser,
+  updateMemoryUser,
+  deleteMemoryUser,
+} from "../db/usersStore.js";
 
 const router = Router();
-
-// In-memory fallback users for offline mode
-let inMemoryUsers: any[] = [
-  {
-    id: "u-admin",
-    name: "System Administrator",
-    email: "admin@demo.com",
-    role: "admin",
-    city: "Colombo Fort",
-    lat: 6.9344,
-    lng: 79.8428,
-    orderCount: 14,
-    totalSpent: 12500.0,
-    createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "u-customer1",
-    name: "Amal Perera",
-    email: "customer@demo.com",
-    role: "customer",
-    city: "Colombo 3",
-    lat: 6.8980,
-    lng: 79.8560,
-    orderCount: 4,
-    totalSpent: 4200.0,
-    createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "u-customer2",
-    name: "Nimal Silva",
-    email: "nimal@demo.com",
-    role: "customer",
-    city: "Kandy City",
-    lat: 7.2906,
-    lng: 80.6337,
-    orderCount: 2,
-    totalSpent: 1800.0,
-    createdAt: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "u-customer3",
-    name: "Kamala Fernando",
-    email: "kamala@demo.com",
-    role: "customer",
-    city: "Galle",
-    lat: 6.0535,
-    lng: 80.2210,
-    orderCount: 1,
-    totalSpent: 950.0,
-    createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-  },
-];
 
 // GET /api/users - Admin list all users with order statistics
 router.get("/", authenticateToken, requireRole("admin"), async (_req: AuthRequest, res: Response): Promise<void> => {
@@ -71,24 +27,30 @@ router.get("/", authenticateToken, requireRole("admin"), async (_req: AuthReques
       ORDER BY u.created_at DESC
     `);
 
-    const users = result.rows.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      city: u.city,
-      lat: Number(u.lat),
-      lng: Number(u.lng),
-      orderCount: Number(u.order_count),
-      totalSpent: Number(Number(u.total_spent).toFixed(2)),
-      createdAt: u.created_at,
-    }));
+    if (result && result.rows && result.rows.length > 0) {
+      const users = result.rows.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        city: u.city,
+        lat: Number(u.lat),
+        lng: Number(u.lng),
+        orderCount: Number(u.order_count),
+        totalSpent: Number(Number(u.total_spent).toFixed(2)),
+        createdAt: u.created_at,
+      }));
 
-    inMemoryUsers = users;
-    res.json({ success: true, users });
+      // Synchronize in-memory registry
+      users.forEach((u) => addMemoryUser(u as any));
+      res.json({ success: true, users: getMemoryUsers() });
+      return;
+    }
+
+    res.json({ success: true, users: getMemoryUsers() });
   } catch (err: any) {
     console.warn("Database offline during fetch users, returning in-memory users:", err?.message);
-    res.json({ success: true, users: inMemoryUsers });
+    res.json({ success: true, users: getMemoryUsers() });
   }
 });
 
@@ -113,10 +75,9 @@ router.post("/", authenticateToken, requireRole("admin"), async (req: AuthReques
       return;
     }
 
-    const targetRole = role === "admin" ? "admin" : "customer";
-
-    const check = await query("SELECT id FROM users WHERE email = $1", [cleanEmail]);
-    if (check.rows.length > 0) {
+    const targetRole: "admin" | "customer" = role === "admin" ? "admin" : "customer";
+    const existingMemory = findMemoryUserByEmail(cleanEmail);
+    if (existingMemory) {
       res.status(409).json({ success: false, error: "A user with this email already exists." });
       return;
     }
@@ -129,11 +90,33 @@ router.post("/", authenticateToken, requireRole("admin"), async (req: AuthReques
     const userLat = typeof lat === "number" ? lat : 6.9271;
     const userLng = typeof lng === "number" ? lng : 79.8612;
 
-    await query(
-      `INSERT INTO users (id, name, email, password_hash, role, city, lat, lng)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [userId, String(name).trim(), cleanEmail, passwordHash, targetRole, userCity, userLat, userLng]
-    );
+    const newUserObj = {
+      id: userId,
+      name: String(name).trim(),
+      email: cleanEmail,
+      passwordHash,
+      role: targetRole,
+      city: userCity,
+      lat: userLat,
+      lng: userLng,
+      orderCount: 0,
+      totalSpent: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Always store in memory store first
+    addMemoryUser(newUserObj);
+
+    // Attempt database persistence
+    try {
+      await query(
+        `INSERT INTO users (id, name, email, password_hash, role, city, lat, lng)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [userId, String(name).trim(), cleanEmail, passwordHash, targetRole, userCity, userLat, userLng]
+      );
+    } catch (dbErr: any) {
+      console.warn("Database insert failed, user saved in active memory store:", dbErr?.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -162,42 +145,48 @@ router.put("/:id", authenticateToken, requireRole("admin"), async (req: AuthRequ
     const id = String(req.params.id);
     const { name, email, role, city, lat, lng, password } = req.body;
 
-    const check = await query("SELECT id, email FROM users WHERE id = $1", [id]);
-    if (check.rows.length === 0) {
-      res.status(404).json({ success: false, error: "User not found." });
-      return;
-    }
-
-    const cleanEmail = email ? String(email).trim().toLowerCase() : check.rows[0].email;
-    if (cleanEmail !== check.rows[0].email) {
-      const emailDup = await query("SELECT id FROM users WHERE email = $1 AND id != $2", [cleanEmail, id]);
-      if (emailDup.rows.length > 0) {
-        res.status(409).json({ success: false, error: "Email is already taken by another account." });
-        return;
-      }
-    }
-
+    const existingMem = findMemoryUserById(id);
+    const cleanEmail = email ? String(email).trim().toLowerCase() : existingMem?.email || "";
     const targetRole = role === "admin" ? "admin" : "customer";
-    const userCity = city || "Colombo";
-    const userLat = typeof lat === "number" ? lat : 6.9271;
-    const userLng = typeof lng === "number" ? lng : 79.8612;
+    const userCity = city || existingMem?.city || "Colombo";
+    const userLat = typeof lat === "number" ? lat : existingMem?.lat || 6.9271;
+    const userLng = typeof lng === "number" ? lng : existingMem?.lng || 79.8612;
+
+    const patch: any = {
+      name: name ? String(name).trim() : existingMem?.name,
+      email: cleanEmail,
+      role: targetRole,
+      city: userCity,
+      lat: userLat,
+      lng: userLng,
+    };
 
     if (password && String(password).length >= 6) {
       const salt = bcrypt.genSaltSync(10);
-      const passwordHash = bcrypt.hashSync(String(password), salt);
-      await query(
-        `UPDATE users
-         SET name = $1, email = $2, role = $3, city = $4, lat = $5, lng = $6, password_hash = $7
-         WHERE id = $8`,
-        [String(name).trim(), cleanEmail, targetRole, userCity, userLat, userLng, passwordHash, id]
-      );
-    } else {
-      await query(
-        `UPDATE users
-         SET name = $1, email = $2, role = $3, city = $4, lat = $5, lng = $6
-         WHERE id = $7`,
-        [String(name).trim(), cleanEmail, targetRole, userCity, userLat, userLng, id]
-      );
+      patch.passwordHash = bcrypt.hashSync(String(password), salt);
+    }
+
+    updateMemoryUser(id, patch);
+
+    // Also attempt database update
+    try {
+      if (patch.passwordHash) {
+        await query(
+          `UPDATE users
+           SET name = $1, email = $2, role = $3, city = $4, lat = $5, lng = $6, password_hash = $7
+           WHERE id = $8`,
+          [patch.name, cleanEmail, targetRole, userCity, userLat, userLng, patch.passwordHash, id]
+        );
+      } else {
+        await query(
+          `UPDATE users
+           SET name = $1, email = $2, role = $3, city = $4, lat = $5, lng = $6
+           WHERE id = $7`,
+          [patch.name, cleanEmail, targetRole, userCity, userLat, userLng, id]
+        );
+      }
+    } catch (dbErr: any) {
+      console.warn("Database user update failed, updated in memory store:", dbErr?.message);
     }
 
     res.json({
@@ -205,7 +194,7 @@ router.put("/:id", authenticateToken, requireRole("admin"), async (req: AuthRequ
       message: "User profile updated successfully.",
       user: {
         id,
-        name: String(name).trim(),
+        name: patch.name,
         email: cleanEmail,
         role: targetRole,
         city: userCity,
@@ -230,17 +219,18 @@ router.delete("/:id", authenticateToken, requireRole("admin"), async (req: AuthR
       return;
     }
 
-    const check = await query("SELECT id, name, role FROM users WHERE id = $1", [id]);
-    if (check.rows.length === 0) {
-      res.status(404).json({ success: false, error: "User not found." });
-      return;
-    }
+    const existingMem = findMemoryUserById(id);
+    deleteMemoryUser(id);
 
-    await query("DELETE FROM users WHERE id = $1", [id]);
+    try {
+      await query("DELETE FROM users WHERE id = $1", [id]);
+    } catch (dbErr: any) {
+      console.warn("Database user delete failed, removed from memory store:", dbErr?.message);
+    }
 
     res.json({
       success: true,
-      message: `User '${check.rows[0].name}' deleted successfully.`,
+      message: `User '${existingMem?.name || id}' deleted successfully.`,
     });
   } catch (err: any) {
     console.error("Delete user error:", err);

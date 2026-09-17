@@ -126,8 +126,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 let server: any = null;
-const isMain = process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.js");
-if (isMain) {
+if (process.env.NODE_ENV !== "test") {
   const listenPort = Number(process.env.PORT) || 5000;
   server = app.listen(listenPort, "0.0.0.0", () => {
     console.log(`====================================================`);

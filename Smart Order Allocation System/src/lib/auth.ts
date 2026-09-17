@@ -93,10 +93,44 @@ export async function login(
       error: (res as any)?.error || "Invalid email or password. Please try again.",
     };
   } catch (err: any) {
-    console.warn("Backend auth call failed:", err?.message);
+    console.warn("Backend auth call failed, checking local users store fallback:", err?.message);
+    
+    // Check locally saved users store for newly created admin/customer accounts
+    try {
+      const rawUsers = localStorage.getItem("soas_users");
+      if (rawUsers) {
+        const usersList: any[] = JSON.parse(rawUsers);
+        const matched = usersList.find((u) => u.email?.toLowerCase() === cleanEmail);
+        if (matched) {
+          // If a password was stored with the user, check it; otherwise permit login
+          if (!matched.password || matched.password === cleanPassword) {
+            const fallbackRole: "admin" | "customer" = matched.role === "admin" ? "admin" : "customer";
+            const session: Session = {
+              user: {
+                id: matched.id,
+                name: matched.name || "Administrator",
+                email: matched.email,
+                role: fallbackRole,
+                location: {
+                  city: matched.city || "Colombo Fort",
+                  lat: matched.lat || 6.9344,
+                  lng: matched.lng || 79.8428,
+                },
+              },
+              token: `local-auth-token-${matched.id}`,
+              expiresAt: Date.now() + 8 * 3600 * 1000,
+            };
+            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            localStorage.setItem(JWT_KEY, session.token);
+            return { success: true, session };
+          }
+        }
+      }
+    } catch {}
+
     return {
       success: false,
-      error: "Backend server is currently unreachable. Please sign in using the Admin or Customer demo credentials below.",
+      error: (err as any)?.message || "Invalid email or password, or backend server is starting up. Please try again.",
     };
   }
 }
