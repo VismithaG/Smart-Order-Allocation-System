@@ -172,7 +172,7 @@ export default function ProductManagement() {
             Product Catalog Management
           </h1>
           <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-            Manage store catalog, set prices in LKR, and synchronize inventory records across all branches in PostgreSQL.
+            Manage store catalog, set prices in LKR, and synchronize inventory records across all branches.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ export default function ProductManagement() {
       {/* Product Table */}
       <div className="rounded-lg border overflow-hidden shadow-xs" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground">Loading PostgreSQL catalog...</div>
+          <div className="p-12 text-center text-xs text-muted-foreground">Loading product catalog...</div>
         ) : filteredProducts.length === 0 ? (
           <div className="p-12 text-center text-xs text-muted-foreground">
             No products match the selected criteria.
@@ -391,7 +391,7 @@ export default function ProductManagement() {
               </div>
 
               <div className="p-3 rounded-md bg-muted/40 text-[11px] text-muted-foreground">
-                ℹ️ Adding a product will automatically seed a 0-quantity stock entry across all active branches in PostgreSQL.
+                ℹ️ Adding a product will automatically initialize stock records across all active branches.
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>

@@ -196,7 +196,7 @@ export default function UserManagement() {
             Customer & User Management
           </h1>
           <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-            Supervisory directory of customer accounts, roles, addresses, and transaction volumes stored in PostgreSQL.
+            Directory of customer accounts, roles, delivery addresses, and transaction volumes.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export default function UserManagement() {
       {/* Users Table */}
       <div className="rounded-lg border overflow-hidden shadow-xs" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground">Loading PostgreSQL user directory...</div>
+          <div className="p-12 text-center text-xs text-muted-foreground">Loading user directory...</div>
         ) : filteredUsers.length === 0 ? (
           <div className="p-12 text-center text-xs text-muted-foreground">No users match the search filter.</div>
         ) : (
