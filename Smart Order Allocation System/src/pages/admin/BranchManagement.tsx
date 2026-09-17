@@ -75,7 +75,7 @@ export default function BranchManagement() {
     try {
       const res = await api.branches.updateStock(selectedBranch, productId, newQty);
       if (res.success) {
-        showMessage("Stock quantity updated in PostgreSQL successfully.");
+        showMessage("Stock quantity updated successfully.");
         refresh();
       }
     } catch (err: any) {
@@ -196,7 +196,7 @@ export default function BranchManagement() {
             Branch & Location Management
           </h1>
           <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-            Add new locations, update coordinates, toggle store availability, and manage live stock levels in PostgreSQL.
+            Add new locations, update coordinates, toggle store availability, and manage live stock levels.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function BranchManagement() {
       </div>
 
       {loading && !branches.length ? (
-        <div className="p-12 text-center text-xs text-muted-foreground">Loading branches from PostgreSQL...</div>
+        <div className="p-12 text-center text-xs text-muted-foreground">Loading branches...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Left col: Branches list */}
@@ -477,7 +477,7 @@ export default function BranchManagement() {
               </div>
 
               <div className="p-3 rounded-md bg-muted/40 text-[11px] text-muted-foreground">
-                ℹ️ Adding this location automatically initializes zero-quantity inventory records for all existing catalog items in PostgreSQL.
+                ℹ️ Adding this location automatically initializes zero-quantity inventory records for all existing catalog items.
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>

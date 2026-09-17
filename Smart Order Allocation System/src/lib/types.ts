@@ -25,6 +25,7 @@ export interface BranchStock {
   productId: string;
   productName?: string;
   quantity: number;
+  price?: number;
 }
 
 export interface Branch {
