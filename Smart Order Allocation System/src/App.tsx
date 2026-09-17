@@ -9,11 +9,20 @@ import Layout from "./components/Layout";
 import NewOrder from "./pages/customer/NewOrder";
 import OrderHistory from "./pages/customer/OrderHistory";
 import Dashboard from "./pages/admin/Dashboard";
+import ProductManagement from "./pages/admin/ProductManagement";
 import BranchManagement from "./pages/admin/BranchManagement";
+import UserManagement from "./pages/admin/UserManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 import MessageClassifier from "./pages/admin/MessageClassifier";
 
-const ADMIN_ROUTES: Route[] = ["/admin", "/admin/branches", "/admin/orders", "/admin/classifier"];
+const ADMIN_ROUTES: Route[] = [
+  "/admin",
+  "/admin/products",
+  "/admin/branches",
+  "/admin/users",
+  "/admin/orders",
+  "/admin/classifier",
+];
 const CUSTOMER_ROUTES: Route[] = ["/orders/new", "/orders", "/orders/status"];
 
 export default function App() {
@@ -63,7 +72,9 @@ export default function App() {
       case "/orders": return <OrderHistory />;
       // Admin
       case "/admin": return <Dashboard />;
+      case "/admin/products": return <ProductManagement />;
       case "/admin/branches": return <BranchManagement />;
+      case "/admin/users": return <UserManagement />;
       case "/admin/orders": return <OrderManagement />;
       case "/admin/classifier": return <MessageClassifier />;
       default:

@@ -5,11 +5,12 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import { initSchema } from "./db/schema.js";
 import { seedDatabase } from "./db/seed.js";
-import { db } from "./db/database.js";
+import { query } from "./db/database.js";
 
 import authRoutes from "./routes/auth.js";
 import productsRoutes from "./routes/products.js";
 import branchesRoutes from "./routes/branches.js";
+import usersRoutes from "./routes/users.js";
 import ordersRoutes from "./routes/orders.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import aiRoutes from "./routes/ai.js";
@@ -20,12 +21,20 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize Database schema and auto-seed if empty
-initSchema();
-const userCount = (db.prepare("SELECT COUNT(*) as c FROM users").get() as any).c;
-if (userCount === 0) {
-  console.log("Empty database detected. Auto-seeding initial data...");
-  seedDatabase();
+async function initDb() {
+  try {
+    await initSchema();
+    const countRes = await query("SELECT COUNT(*)::int as c FROM users");
+    const count = countRes.rows[0]?.c ?? 0;
+    if (count === 0) {
+      console.log("Empty database detected. Auto-seeding initial data...");
+      await seedDatabase();
+    }
+  } catch (err) {
+    console.error("Database startup check failed:", err);
+  }
 }
+initDb();
 
 // Security Middleware
 app.use(helmet({
@@ -42,14 +51,14 @@ app.use(express.json({ limit: "2mb" }));
 // Rate Limiting
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 300,
   message: { success: false, error: "Too many requests. Please try again later." },
 });
 app.use("/api", globalLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 60,
   message: { success: false, error: "Too many login attempts. Please try again after 15 minutes." },
 });
 app.use("/api/auth", authLimiter);
@@ -59,6 +68,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     status: "healthy",
     service: "Smart Order Allocation System (SOAS) API",
+    database: "PostgreSQL",
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.floor(process.uptime()),
   });
@@ -68,6 +78,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/branches", branchesRoutes);
+app.use("/api/users", usersRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
@@ -92,7 +103,7 @@ if (isMain) {
   server = app.listen(PORT, () => {
     console.log(`====================================================`);
     console.log(`🚀 SOAS Backend Server running on http://localhost:${PORT}`);
-    console.log(`📦 Database: SQLite (Persistent with WAL mode)`);
+    console.log(`🐘 Database: PostgreSQL (Persistent Docker container)`);
     console.log(`🤖 AI Engine: scikit-learn Logistic Regression Model Loaded`);
     console.log(`====================================================`);
   });

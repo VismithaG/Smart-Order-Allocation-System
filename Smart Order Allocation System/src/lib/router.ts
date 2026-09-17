@@ -4,7 +4,9 @@ export type Route =
   | "/orders"
   | "/orders/status"
   | "/admin"
+  | "/admin/products"
   | "/admin/branches"
+  | "/admin/users"
   | "/admin/orders"
   | "/admin/classifier";
 

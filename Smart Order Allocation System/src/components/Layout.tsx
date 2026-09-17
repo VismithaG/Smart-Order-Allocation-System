@@ -47,12 +47,32 @@ const ADMIN_NAV: NavItem[] = [
     ),
   },
   {
+    label: "Products",
+    route: "/admin/products",
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 1.5l5.5 3v6l-5.5 3-5.5-3v-6l5.5-3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M7.5 7.5v6M7.5 7.5L13 4.5M7.5 7.5L2 4.5" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    ),
+  },
+  {
     label: "Branches",
     route: "/admin/branches",
     icon: (
       <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
         <circle cx="7.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
         <path d="M7.5 8C4.5 8 2 9.8 2 12h11c0-2.2-2.5-4-5.5-4z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "Customers",
+    route: "/admin/users",
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M5 6a2 2 0 100-4 2 2 0 000 4zM10 6a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M1.5 12.5a3.5 3.5 0 017 0M6.5 12.5a3.5 3.5 0 017 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       </svg>
     ),
   },
