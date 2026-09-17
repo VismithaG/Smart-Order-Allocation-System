@@ -50,14 +50,14 @@ export function seedDatabase() {
   `);
 
   const products = [
-    { id: "p1", name: "Classic Milk Tea", category: "Drinks", price: 4.50 },
-    { id: "p2", name: "Brown Sugar Milk Tea", category: "Drinks", price: 5.50 },
-    { id: "p3", name: "Chocolate Milk Tea", category: "Drinks", price: 5.00 },
-    { id: "p4", name: "Mango Fruit Tea", category: "Drinks", price: 5.00 },
-    { id: "p5", name: "Taro Milk Tea", category: "Drinks", price: 5.50 },
-    { id: "p6", name: "Matcha Latte", category: "Drinks", price: 6.00 },
-    { id: "p7", name: "Pearl Add-on", category: "Add-ons", price: 0.75 },
-    { id: "p8", name: "Extra Shot", category: "Add-ons", price: 1.00 },
+    { id: "p1", name: "Classic Milk Tea", category: "Drinks", price: 400 },
+    { id: "p2", name: "Brown Sugar Milk Tea", category: "Drinks", price: 600 },
+    { id: "p3", name: "Chocolate Milk Tea", category: "Drinks", price: 650 },
+    { id: "p4", name: "Mango Fruit Tea", category: "Drinks", price: 600 },
+    { id: "p5", name: "Taro Milk Tea", category: "Drinks", price: 650 },
+    { id: "p6", name: "Matcha Latte", category: "Drinks", price: 700 },
+    { id: "p7", name: "Pearl Add-on", category: "Add-ons", price: 200 },
+    { id: "p8", name: "Extra Shot", category: "Add-ons", price: 150 },
   ];
 
   for (const p of products) {
