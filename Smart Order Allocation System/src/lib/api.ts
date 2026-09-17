@@ -1,3 +1,4 @@
+import type { Product } from "./types";
 import {
   getProductsStore,
   saveProductsStore,
@@ -5,6 +6,7 @@ import {
   updateProductStore,
   deleteProductStore,
   getUsersStore,
+  saveUsersStore,
   addUserStore,
   updateUserStore,
   deleteUserStore,
@@ -16,7 +18,6 @@ import {
   addOrder,
   updateOrder,
   deleteOrder,
-  Product,
 } from "./store";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
