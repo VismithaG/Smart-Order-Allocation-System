@@ -65,11 +65,14 @@ export default function Dashboard() {
     setLoading(true);
     api.dashboard.stats()
       .then((res) => {
-        if (res.success) {
+        if (res && res.stats) {
           setStats(res.stats);
+          setError("");
         }
       })
-      .catch((err) => setError(err.message || "Failed to load dashboard metrics."))
+      .catch((err) => {
+        console.warn("Dashboard stats call failed, relying on local store fallback:", err?.message);
+      })
       .finally(() => setLoading(false));
   }
 

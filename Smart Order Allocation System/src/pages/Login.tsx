@@ -23,7 +23,12 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
         setError(result.error || "Login failed.");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to sign in.");
+      const msg = err?.message || "";
+      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network")) {
+        setError("Backend server is currently offline. Please sign in using the Admin or Customer demo credentials below.");
+      } else {
+        setError(msg || "Failed to sign in.");
+      }
     } finally {
       setLoading(false);
     }
