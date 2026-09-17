@@ -243,7 +243,9 @@ export default function BranchManagement() {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <div className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{b.name}</div>
-                      <div className="text-xs text-muted-foreground">{b.city} • Lat: {b.lat.toFixed(4)}, Lng: {b.lng.toFixed(4)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {b.city} • Lat: {Number(b.lat ?? (b as any).location?.lat ?? 6.9344).toFixed(4)}, Lng: {Number(b.lng ?? (b as any).location?.lng ?? 79.8428).toFixed(4)}
+                      </div>
                     </div>
                     <button
                       onClick={(e) => {
@@ -315,7 +317,7 @@ export default function BranchManagement() {
                       Live Inventory: {activeBranch.name}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Coordinates: {activeBranch.lat.toFixed(4)}, {activeBranch.lng.toFixed(4)} | Max Capacity: {activeBranch.maxCapacity} orders
+                      Coordinates: {Number(activeBranch.lat ?? (activeBranch as any).location?.lat ?? 6.9344).toFixed(4)}, {Number(activeBranch.lng ?? (activeBranch as any).location?.lng ?? 79.8428).toFixed(4)} | Max Capacity: {activeBranch.maxCapacity || 15} orders
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

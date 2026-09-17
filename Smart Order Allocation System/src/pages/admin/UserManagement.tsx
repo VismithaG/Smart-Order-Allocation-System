@@ -60,18 +60,22 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = (users || []).filter((u) => {
+    if (!u) return false;
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    const name = u.name || "";
+    const email = u.email || "";
+    const city = u.city || (u as any).location?.city || "";
     const matchesSearch =
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.city.toLowerCase().includes(searchTerm.toLowerCase());
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      city.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesRole && matchesSearch;
   });
 
-  const totalSpent = users.reduce((acc, u) => acc + (u.totalSpent || 0), 0);
-  const customerCount = users.filter((u) => u.role === "customer").length;
-  const adminCount = users.filter((u) => u.role === "admin").length;
+  const totalSpent = (users || []).reduce((acc, u) => acc + (Number(u?.totalSpent) || 0), 0);
+  const customerCount = (users || []).filter((u) => u?.role === "customer").length;
+  const adminCount = (users || []).filter((u) => u?.role === "admin").length;
 
   function openAddModal() {
     setFormName("");
@@ -233,7 +237,7 @@ export default function UserManagement() {
         </div>
         <div className="p-3.5 rounded-lg border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
           <div className="text-[11px] font-medium" style={{ color: "var(--muted-foreground)" }}>Lifetime Spend</div>
-          <div className="text-xl font-bold mt-1 text-emerald-400">Rs. {totalSpent.toFixed(2)}</div>
+          <div className="text-xl font-bold mt-1 text-emerald-400">Rs. {Number(totalSpent || 0).toFixed(2)}</div>
         </div>
       </div>
 
@@ -338,18 +342,21 @@ export default function UserManagement() {
                         </span>
                       </td>
                       <td className="p-3.5">
-                        <div className="font-medium" style={{ color: "var(--foreground)" }}>{u.city}</div>
+                        <div className="font-medium" style={{ color: "var(--foreground)" }}>
+                          {u.city || (u as any).location?.city || "Colombo"}
+                        </div>
                         <div className="text-[10px] font-mono text-muted-foreground">
-                          {u.lat.toFixed(4)}, {u.lng.toFixed(4)}
+                          {Number(u.lat ?? (u as any).location?.lat ?? 6.9271).toFixed(4)},{" "}
+                          {Number(u.lng ?? (u as any).location?.lng ?? 79.8612).toFixed(4)}
                         </div>
                       </td>
                       <td className="p-3.5 text-center font-mono font-medium">
                         <span className="px-2 py-0.5 rounded bg-muted text-foreground">
-                          {u.orderCount}
+                          {u.orderCount || 0}
                         </span>
                       </td>
                       <td className="p-3.5 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>
-                        Rs. {u.totalSpent.toFixed(2)}
+                        Rs. {Number(u.totalSpent || 0).toFixed(2)}
                       </td>
                       <td className="p-3.5 text-right space-x-2">
                         <button

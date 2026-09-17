@@ -6,6 +6,7 @@ import type { Role } from "./lib/types";
 
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
+import ErrorBoundary from "./components/ErrorBoundary";
 import NewOrder from "./pages/customer/NewOrder";
 import OrderHistory from "./pages/customer/OrderHistory";
 import Dashboard from "./pages/admin/Dashboard";
@@ -84,7 +85,9 @@ export default function App() {
 
   return (
     <Layout currentRoute={route} role={userRole} userName={userName}>
-      {renderPage()}
+      <ErrorBoundary>
+        {renderPage()}
+      </ErrorBoundary>
     </Layout>
   );
 }

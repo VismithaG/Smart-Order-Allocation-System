@@ -229,7 +229,7 @@ export default function OrderManagement() {
                       </td>
 
                       <td className="p-3 font-mono font-medium" style={{ color: "var(--primary)" }}>
-                        LKR {o.total.toFixed(2)}
+                        LKR {Number(o.total || 0).toFixed(2)}
                       </td>
 
                       <td className="p-3">
