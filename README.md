@@ -3,11 +3,11 @@
 [![Node.js](https://img.shields.io/badge/Node.js-v22+-green.svg)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-v19-blue.svg)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-v5.7-blue.svg)](https://www.typescriptlang.org)
-[![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-blue.svg)](https://sqlite.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-v15+-blue.svg)](https://www.postgresql.org)
 [![Python ML](https://img.shields.io/badge/scikit--learn-88.0%25%20CV-orange.svg)](https://scikit-learn.org)
 [![Test Suite](https://img.shields.io/badge/Integration%20Tests-100%25%20Passing-brightgreen.svg)](https://github.com/VismithaG/Smart-Order-Allocation-System)
 
-A full-stack, distributed order management and intelligent branch routing platform designed to automatically evaluate multi-branch inventories, geospatial distance, and kitchen workload levels in real time to dispatch customer orders to the optimal branch. Includes an AI/ML customer inquiry classification and automated triage engine trained on the provided assessment dataset.
+A full-stack, distributed order management and intelligent branch routing platform designed to automatically evaluate multi-branch inventories, geospatial distance, and kitchen workload levels in real time to dispatch customer orders to the optimal branch. Persisted in **PostgreSQL** with complete **Admin Supervisory CRUD** capabilities for products, customer accounts, and branch locations. Includes an AI/ML customer inquiry classification and automated triage engine trained on the provided assessment dataset.
 
 ---
 
@@ -43,7 +43,7 @@ A full-stack, distributed order management and intelligent branch routing platfo
 | Layer | Technologies | Rationale |
 |---|---|---|
 | **Backend** | Node.js (v22), Express, TypeScript | High-performance asynchronous REST API with strong type safety. |
-| **Database** | SQLite (Node 22 native `node:sqlite`) | Persistent relational database with WAL (Write-Ahead Logging) mode, foreign keys, and zero external compilation dependencies. |
+| **Database** | PostgreSQL (v15 Alpine via Docker / `pg.Pool`) | Persistent relational database with connection pooling, foreign key cascading, JSONB payloads, and ACID transactions. |
 | **Authentication** | JSON Web Tokens (`jsonwebtoken`), `bcryptjs` | Stateless cryptographically signed JWT auth with role-based claims (`customer`, `admin`) and salt-hashed passwords. |
 | **Security** | `helmet`, `cors`, `express-rate-limit` | Defense-in-depth security headers, CORS origin restrictions, and brute-force protection. |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4 | High-performance reactive UI with responsive layout, real-time feedback, and accessible styling. |
@@ -218,10 +218,22 @@ Promotion/Discount Inquiry     0.8980    0.8148    0.8544        54
 - `POST /auth/register` — Register a customer account (`{ name, email, password, city, lat, lng }`)
 - `POST /auth/login` — Login user (`{ email, password }` -> returns `{ token, user }`)
 - `GET /auth/me` — Return current authenticated session user (Requires `Bearer` token)
+- `GET /users` — **[Admin]** List all customer and admin accounts with order statistics and lifetime spend
+- `POST /users` — **[Admin]** Create customer or admin user account with bcrypt hashing
+- `PUT /users/:id` — **[Admin]** Update user profile, contact info, role, or reset password
+- `DELETE /users/:id` — **[Admin]** Delete user account (protected against self-deletion)
 
-#### Products & Branches
-- `GET /products` — Retrieve all available beverages and add-ons
+#### Products Catalog Management
+- `GET /products` — Retrieve all available beverages and add-ons with LKR pricing
+- `POST /products` — **[Admin]** Create product and auto-initialize 0-quantity stock records across all branches
+- `PUT /products/:id` — **[Admin]** Update product name, category, price, and image URL
+- `DELETE /products/:id` — **[Admin]** Delete product (cascades branch stock records)
+
+#### Locations & Branch Management
 - `GET /branches` — Retrieve branches with live inventory, active orders, and status
+- `POST /branches` — **[Admin]** Add new branch location with spherical coordinates and capacity
+- `PUT /branches/:id` — **[Admin]** Update branch details, location coordinates, or max capacity
+- `DELETE /branches/:id` — **[Admin]** Delete branch location
 - `GET /branches/:id/stock` — Get itemized stock for a branch
 - `PUT /branches/:id/stock` — **[Admin]** Update product stock quantity (`{ productId, quantity }`)
 - `PATCH /branches/:id/toggle` — **[Admin]** Open or close a branch

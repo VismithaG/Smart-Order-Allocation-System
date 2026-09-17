@@ -104,7 +104,7 @@ export default function NewOrder() {
 
   const totalItemsCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const itemsSubtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-  const deliveryFee = itemsSubtotal >= 15 ? 0 : 1.50; // Free delivery over LKR 15
+  const deliveryFee = itemsSubtotal >= 1500 ? 0 : 250; // Free delivery over LKR 1500
   const grandTotal = itemsSubtotal + (items.length > 0 ? deliveryFee : 0);
 
   function setQty(pid: string, val: number) {
@@ -421,6 +421,7 @@ export default function NewOrder() {
                     </span>
                     <div className="flex items-center gap-2">
                       <button
+                        id={`btn-qty-minus-${p.id}`}
                         type="button"
                         onClick={() => setQty(p.id, qty - 1)}
                         disabled={qty === 0}
@@ -433,6 +434,7 @@ export default function NewOrder() {
                         {qty}
                       </span>
                       <button
+                        id={`btn-qty-plus-${p.id}`}
                         type="button"
                         onClick={() => setQty(p.id, qty + 1)}
                         className="w-7 h-7 rounded border flex items-center justify-center text-sm font-bold cursor-pointer transition-colors text-white"
@@ -462,6 +464,7 @@ export default function NewOrder() {
             </div>
 
             <button
+              id="btn-proceed-summary"
               onClick={() => setStep("summary")}
               disabled={totalItemsCount === 0}
               className="px-5 py-2.5 rounded-lg text-xs font-bold text-black disabled:opacity-30 cursor-pointer transition-all shadow-md"
@@ -566,6 +569,7 @@ export default function NewOrder() {
                   <span className="text-[10px] text-purple-400 font-mono">🤖 Real-time AI Triage</span>
                 </div>
                 <textarea
+                  id="textarea-order-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="e.g. Please deliver before 5 PM, or rider call when arriving at gate."
@@ -619,6 +623,7 @@ export default function NewOrder() {
                 </div>
 
                 <button
+                  id="btn-proceed-payment"
                   onClick={() => setStep("payment")}
                   className="w-full py-3 px-4 rounded-lg text-xs font-bold text-black cursor-pointer shadow-md transition-transform active:scale-98"
                   style={{ background: "var(--primary)" }}
@@ -840,6 +845,7 @@ export default function NewOrder() {
                 </div>
 
                 <button
+                  id="btn-confirm-pay"
                   onClick={handleCompleteOrder}
                   disabled={submitting}
                   className="w-full py-3 px-4 rounded-lg text-xs font-bold text-black cursor-pointer shadow-lg disabled:opacity-40 transition-all active:scale-98"

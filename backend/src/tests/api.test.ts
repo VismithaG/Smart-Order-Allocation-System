@@ -1,17 +1,17 @@
 process.env.NODE_ENV = "test";
 import assert from "node:assert/strict";
 import { app } from "../server.js";
-import { db } from "../db/database.js";
+import { query } from "../db/database.js";
 import { seedDatabase } from "../db/seed.js";
 import { classifyMessage } from "../services/classifier.js";
 
 async function runTests() {
   console.log("=================================================");
-  console.log("🧪 RUNNING SOAS FULL-STACK BACKEND & ML TEST SUITE");
+  console.log("🧪 RUNNING SOAS POSTGRESQL FULL-STACK & CRUD TEST SUITE");
   console.log("=================================================");
 
   // Reset to known clean seed state
-  seedDatabase();
+  await seedDatabase();
 
   let activeServer: any = null;
   let baseUrl = "http://localhost:5000";
@@ -32,7 +32,8 @@ async function runTests() {
   const healthData = await healthRes.json();
   assert.equal(healthRes.status, 200);
   assert.equal(healthData.status, "healthy");
-  console.log("✓ Health Check passed:", healthData.service);
+  assert.equal(healthData.database, "PostgreSQL");
+  console.log("✓ Health Check passed:", healthData.service, "(PostgreSQL active)");
 
   // 2. Auth: Customer & Admin Login
   console.log("\n[TEST 2] Authentication & JWT Generation");
@@ -79,29 +80,174 @@ async function runTests() {
   assert.ok(statsData.stats.totalOrders >= 5);
   console.log("✓ Admin access to dashboard granted (200 OK). Total orders:", statsData.stats.totalOrders);
 
-  // 4. Products & Branches
-  console.log("\n[TEST 4] Products Catalog & Branches");
-  const prodRes = await fetch(`${baseUrl}/api/products`);
-  const prodData = await prodRes.json();
-  assert.equal(prodRes.status, 200);
-  assert.ok(prodData.products.length >= 8);
-  console.log("✓ Products catalog returned", prodData.products.length, "items.");
+  // 4. Products Supervisory CRUD
+  console.log("\n[TEST 4] Admin Supervisory Product CRUD");
+  // 4a. Create product
+  const createProdRes = await fetch(`${baseUrl}/api/products`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Super Lychee Fizz",
+      category: "Drinks",
+      price: 580,
+      imageUrl: "",
+    }),
+  });
+  const createProdData = await createProdRes.json();
+  assert.equal(createProdRes.status, 201);
+  assert.equal(createProdData.product.name, "Super Lychee Fizz");
+  const newProdId = createProdData.product.id;
+  console.log("✓ Admin created product:", newProdId, "Super Lychee Fizz");
 
-  const branchRes = await fetch(`${baseUrl}/api/branches`);
-  const branchData = await branchRes.json();
-  assert.equal(branchRes.status, 200);
-  assert.equal(branchData.branches.length, 4);
-  console.log("✓ 4 branches returned with live inventory.");
+  // Verify stock was auto-seeded with 0 across branches in PostgreSQL
+  const stockSeedCheck = await query("SELECT COUNT(*)::int as c FROM branch_stocks WHERE product_id = $1", [newProdId]);
+  assert.equal(stockSeedCheck.rows[0].c, 4, "Should seed stock entries across all 4 branches");
+  console.log("✓ Product stock entries automatically seeded across branches.");
 
-  // 5. Smart Order Allocation Test
-  console.log("\n[TEST 5] Smart Multi-Factor Order Allocation Engine");
-  const colomboStockBefore = (db.prepare("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'").get() as any).quantity;
-  const colomboWorkloadBefore = (db.prepare("SELECT active_orders FROM branches WHERE id = 'b-colombo'").get() as any).active_orders;
+  // 4b. Update product
+  const updateProdRes = await fetch(`${baseUrl}/api/products/${newProdId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Super Lychee Fizz (Special)",
+      category: "Drinks",
+      price: 620,
+    }),
+  });
+  const updateProdData = await updateProdRes.json();
+  assert.equal(updateProdRes.status, 200);
+  assert.equal(updateProdData.product.price, 620);
+  console.log("✓ Admin updated product price to Rs. 620.");
+
+  // 4c. Delete product
+  const deleteProdRes = await fetch(`${baseUrl}/api/products/${newProdId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  assert.equal(deleteProdRes.status, 200);
+  console.log("✓ Admin deleted product successfully.");
+
+  // 5. Branches Supervisory CRUD
+  console.log("\n[TEST 5] Admin Supervisory Branch / Location CRUD");
+  const createBranchRes = await fetch(`${baseUrl}/api/branches`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Kurunegala Central Branch",
+      city: "Kurunegala",
+      lat: 7.4863,
+      lng: 80.3623,
+      maxCapacity: 20,
+    }),
+  });
+  const createBranchData = await createBranchRes.json();
+  assert.equal(createBranchRes.status, 201);
+  const newBranchId = createBranchData.branch.id;
+  console.log("✓ Admin created branch location:", createBranchData.branch.name);
+
+  // Update branch
+  const updateBranchRes = await fetch(`${baseUrl}/api/branches/${newBranchId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Kurunegala City Hub",
+      city: "Kurunegala",
+      lat: 7.4863,
+      lng: 80.3623,
+      maxCapacity: 25,
+    }),
+  });
+  assert.equal(updateBranchRes.status, 200);
+  console.log("✓ Admin updated branch details.");
+
+  // Delete branch
+  const deleteBranchRes = await fetch(`${baseUrl}/api/branches/${newBranchId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  assert.equal(deleteBranchRes.status, 200);
+  console.log("✓ Admin deleted branch location.");
+
+  // 6. Users Supervisory CRUD
+  console.log("\n[TEST 6] Admin Supervisory User & Customer Management");
+  const usersListRes = await fetch(`${baseUrl}/api/users`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  const usersListData = await usersListRes.json();
+  assert.equal(usersListRes.status, 200);
+  assert.ok(usersListData.users.length >= 4);
+  console.log("✓ Admin listed users with order metrics. Total users:", usersListData.users.length);
+
+  // Admin creates user
+  const createUserRes = await fetch(`${baseUrl}/api/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Kasun Jayasuriya",
+      email: "kasun@demo.com",
+      password: "password123",
+      role: "customer",
+      city: "Matara",
+      lat: 5.9549,
+      lng: 80.5550,
+    }),
+  });
+  const createUserData = await createUserRes.json();
+  assert.equal(createUserRes.status, 201);
+  const newUserId = createUserData.user.id;
+  console.log("✓ Admin created user:", createUserData.user.name, `(${createUserData.user.email})`);
+
+  // Admin updates user
+  const updateUserRes = await fetch(`${baseUrl}/api/users/${newUserId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({
+      name: "Kasun Jayasuriya (VIP)",
+      role: "customer",
+      city: "Matara",
+    }),
+  });
+  assert.equal(updateUserRes.status, 200);
+  console.log("✓ Admin updated user profile.");
+
+  // Admin deletes user
+  const deleteUserRes = await fetch(`${baseUrl}/api/users/${newUserId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  assert.equal(deleteUserRes.status, 200);
+  console.log("✓ Admin deleted user account.");
+
+  // 7. Smart Order Allocation Test with PostgreSQL Transactions
+  console.log("\n[TEST 7] Smart Multi-Factor Order Allocation Engine (PostgreSQL)");
+  const colomboStockRes1 = await query("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'");
+  const colomboStockBefore = Number(colomboStockRes1.rows[0].quantity);
+
+  const colomboWorkloadRes1 = await query("SELECT active_orders FROM branches WHERE id = 'b-colombo'");
+  const colomboWorkloadBefore = Number(colomboWorkloadRes1.rows[0].active_orders);
 
   const orderPayload = {
     items: [
-      { productId: "p1", quantity: 2 }, // Classic Milk Tea
-      { productId: "p7", quantity: 2 }, // Pearl Add-on
+      { productId: "p1", quantity: 2 }, // Classic Milk Tea (Rs. 400)
+      { productId: "p7", quantity: 2 }, // Pearl Add-on (Rs. 200)
     ],
     customerLocation: { city: "Colombo 3", lat: 6.8980, lng: 79.8560 },
     note: "Please deliver carefully, thank you! Where is my delivery?",
@@ -122,23 +268,27 @@ async function runTests() {
   assert.ok(orderData.allocation.score > 80, "Allocation score should be high for nearest branch");
   assert.ok(orderData.order.aiCategory, "AI category should be assigned from customer note");
 
-  console.log("✓ Order placed successfully!");
+  console.log("✓ Order placed successfully in PostgreSQL!");
   console.log("  Order ID:", orderData.order.id);
   console.log("  Allocated Branch:", orderData.allocation.branchName);
   console.log("  Allocation Score:", orderData.allocation.score);
   console.log("  Reason:", orderData.allocation.reason);
   console.log("  AI Detected Category:", orderData.order.aiCategory, `(Confidence: ${(orderData.order.aiConfidence * 100).toFixed(1)}%)`);
 
-  // Verify stock deduction in SQLite
-  const colomboStockAfter = (db.prepare("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'").get() as any).quantity;
-  const colomboWorkloadAfter = (db.prepare("SELECT active_orders FROM branches WHERE id = 'b-colombo'").get() as any).active_orders;
+  // Verify stock deduction in PostgreSQL
+  const colomboStockRes2 = await query("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'");
+  const colomboStockAfter = Number(colomboStockRes2.rows[0].quantity);
+
+  const colomboWorkloadRes2 = await query("SELECT active_orders FROM branches WHERE id = 'b-colombo'");
+  const colomboWorkloadAfter = Number(colomboWorkloadRes2.rows[0].active_orders);
+
   assert.equal(colomboStockAfter, colomboStockBefore - 2, "Stock must be decremented by ordered quantity");
   assert.equal(colomboWorkloadAfter, colomboWorkloadBefore + 1, "Active workload must be incremented by 1");
-  console.log("✓ ACID Stock Deduction verified: Stock reduced from", colomboStockBefore, "to", colomboStockAfter);
-  console.log("✓ Branch Workload updated: Workload increased from", colomboWorkloadBefore, "to", colomboWorkloadAfter);
+  console.log("✓ ACID Stock Deduction verified in PostgreSQL:", colomboStockBefore, "->", colomboStockAfter);
+  console.log("✓ Branch Workload updated:", colomboWorkloadBefore, "->", colomboWorkloadAfter);
 
-  // 6. Order Cancellation & Stock Rollback Test
-  console.log("\n[TEST 6] Order Cancellation & Stock/Workload Rollback");
+  // 8. Order Cancellation & Stock Rollback Test
+  console.log("\n[TEST 8] Order Cancellation & Stock/Workload Rollback (PostgreSQL)");
   const cancelRes = await fetch(`${baseUrl}/api/orders/${orderData.order.id}/cancel`, {
     method: "POST",
     headers: { Authorization: `Bearer ${customerToken}` },
@@ -147,19 +297,23 @@ async function runTests() {
   assert.equal(cancelRes.status, 200);
   assert.equal(cancelData.status, "cancelled");
 
-  const colomboStockRestored = (db.prepare("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'").get() as any).quantity;
-  const colomboWorkloadRestored = (db.prepare("SELECT active_orders FROM branches WHERE id = 'b-colombo'").get() as any).active_orders;
+  const colomboStockRes3 = await query("SELECT quantity FROM branch_stocks WHERE branch_id = 'b-colombo' AND product_id = 'p1'");
+  const colomboStockRestored = Number(colomboStockRes3.rows[0].quantity);
+
+  const colomboWorkloadRes3 = await query("SELECT active_orders FROM branches WHERE id = 'b-colombo'");
+  const colomboWorkloadRestored = Number(colomboWorkloadRes3.rows[0].active_orders);
+
   assert.equal(colomboStockRestored, colomboStockBefore, "Stock must be fully restored upon cancellation");
   assert.equal(colomboWorkloadRestored, colomboWorkloadBefore, "Workload must be released upon cancellation");
   console.log("✓ Inventory Rollback verified: Stock restored to", colomboStockRestored);
   console.log("✓ Workload Release verified: Workload returned to", colomboWorkloadRestored);
 
-  // 7. AI Customer Inquiry Classifier Tests
-  console.log("\n[TEST 7] AI / ML Customer Inquiry Classifier");
+  // 9. AI Customer Inquiry Classifier Tests
+  console.log("\n[TEST 9] AI / ML Customer Inquiry Classifier");
   const aiTest1 = classifyMessage("My payment was deducted, but my order is not showing.");
   assert.equal(aiTest1.category, "Payment Issue");
   assert.ok(aiTest1.confidence > 0.85);
-  console.log("✓ Test sample 1 (PDF Example): 'My payment was deducted, but my order is not showing.' ->", aiTest1.category, `(${(aiTest1.confidence * 100).toFixed(1)}%)`);
+  console.log("✓ Test sample 1 (PDF Example): 'My payment was deducted...' ->", aiTest1.category, `(${(aiTest1.confidence * 100).toFixed(1)}%)`);
 
   const aiTest2 = classifyMessage("Is this item available at the Kandy branch today?");
   assert.equal(aiTest2.category, "Product/Stock Inquiry");
@@ -174,7 +328,7 @@ async function runTests() {
   console.log("✓ Test sample 4 (Ambiguous): Flagged as lowConfidence:", aiTest4.lowConfidence, "-", aiTest4.status);
 
   console.log("\n=================================================");
-  console.log("🎉 ALL 7 INTEGRATION & SECURITY TESTS PASSED 100%!");
+  console.log("🎉 ALL 9 INTEGRATION, CRUD & SECURITY TESTS PASSED 100%!");
   console.log("=================================================\n");
 
   if (activeServer) activeServer.close();

@@ -45,10 +45,38 @@ export const api = {
 
   products: {
     list: () => request<{ success: boolean; products: any[] }>("/products"),
+    create: (payload: { name: string; category: string; price: number; imageUrl?: string }) =>
+      request<{ success: boolean; message: string; product: any }>("/products", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: { name: string; category: string; price: number; imageUrl?: string }) =>
+      request<{ success: boolean; message: string; product: any }>(`/products/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/products/${id}`, {
+        method: "DELETE",
+      }),
   },
 
   branches: {
     list: () => request<{ success: boolean; branches: any[] }>("/branches"),
+    create: (payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) =>
+      request<{ success: boolean; message: string; branch: any }>("/branches", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: { name: string; city: string; lat: number; lng: number; maxCapacity?: number }) =>
+      request<{ success: boolean; message: string; branch: any }>(`/branches/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/branches/${id}`, {
+        method: "DELETE",
+      }),
     getStock: (branchId: string) => request<{ success: boolean; branch: any; stock: any[] }>(`/branches/${branchId}/stock`),
     updateStock: (branchId: string, productId: string, quantity: number) =>
       request<{ success: boolean; message: string }>(`/branches/${branchId}/stock`, {
@@ -58,6 +86,24 @@ export const api = {
     toggleStatus: (branchId: string) =>
       request<{ success: boolean; isOpen: boolean; message: string }>(`/branches/${branchId}/toggle`, {
         method: "PATCH",
+      }),
+  },
+
+  users: {
+    list: () => request<{ success: boolean; users: any[] }>("/users"),
+    create: (payload: { name: string; email: string; password: string; role?: string; city?: string; lat?: number; lng?: number }) =>
+      request<{ success: boolean; message: string; user: any }>("/users", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: { name: string; email?: string; password?: string; role?: string; city?: string; lat?: number; lng?: number }) =>
+      request<{ success: boolean; message: string; user: any }>(`/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/users/${id}`, {
+        method: "DELETE",
       }),
   },
 
