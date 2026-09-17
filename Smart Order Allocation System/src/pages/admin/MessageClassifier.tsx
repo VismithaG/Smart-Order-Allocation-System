@@ -63,7 +63,6 @@ export default function MessageClassifier() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-xl">🤖</span>
           <h1 className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>
             AI Customer Inquiry Classification & Triage Workbench
           </h1>
@@ -96,7 +95,7 @@ export default function MessageClassifier() {
       {/* Challenge Dataset Samples (One-Click Testing) */}
       <div className="rounded-lg border p-4" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
         <div className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "var(--muted-foreground)" }}>
-          DartCodes Assessment Challenge Queries (Click any to test):
+          Sample Customer Queries:
         </div>
         <div className="flex flex-wrap gap-2">
           {challengeSamples.map((s) => (
