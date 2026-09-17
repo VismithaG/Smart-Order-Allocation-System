@@ -5,6 +5,12 @@ dotenv.config();
 
 const { Pool } = pg;
 
+const isCloudDatabase = Boolean(
+  process.env.DATABASE_URL &&
+  !process.env.DATABASE_URL.includes("localhost") &&
+  !process.env.DATABASE_URL.includes("127.0.0.1")
+);
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   host: process.env.PGHOST || "localhost",
@@ -15,6 +21,7 @@ export const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  ssl: isCloudDatabase ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on("error", (err) => {

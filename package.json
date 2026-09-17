@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "description": "Smart Order Allocation System (SOAS) - Full-Stack DOM with AI Triage Engine",
   "private": true,
+  "workspaces": [
+    "backend",
+    "Smart Order Allocation System"
+  ],
   "scripts": {
+    "start": "node backend/dist/server.js",
+    "build": "npm --prefix \"Smart Order Allocation System\" run build && npm --prefix backend run build",
     "dev": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix \"Smart Order Allocation System\" run dev",
-    "build": "npm --prefix backend run build && npm --prefix \"Smart Order Allocation System\" run build",
     "seed": "npm --prefix backend run seed",
     "test": "npm --prefix backend test",
     "ml:train": "python ml/train_model.py",
@@ -18,9 +23,7 @@
     "smart-allocation",
     "react",
     "express",
-    "sqlite",
-    "machine-learning",
-    "scikit-learn",
+    "postgres",
     "jwt",
     "rbac"
   ],
