@@ -301,12 +301,4 @@ python ml/predict.py --message "Where is my delivery?"
 3. **Inquiry Dataset Size**: The classification model was trained on 426 clean samples across 8 categories (~53 samples per class). While TF-IDF + Logistic Regression achieves 88% accuracy, training on 10,000+ customer transcripts would further increase robustness against slang, colloquial language, and regional spelling variants.
 
 ---
-
-## Candidate Notes & Interview Preparation
-
-- **Why PostgreSQL with `pg.Pool`?** PostgreSQL provides enterprise-grade relational features, ACID transactional guarantees (`BEGIN`, `COMMIT`, `ROLLBACK`), foreign key cascades, and scale-ready connection pooling for concurrent API workloads.
-- **Why TF-IDF + Logistic Regression over Deep Learning?** For a 450-sample dataset, lightweight models with sublinear TF-IDF avoid overfitting, train in under 2 seconds, and produce well-calibrated probabilities via softmax for confidence thresholding. Exporting parameters to JSON allows the Express backend to perform sub-millisecond in-process inference without needing an external Python process.
-- **Security Decisions**: Passwords hashed with bcrypt (10 rounds); JWT tokens stored securely and validated on all sensitive endpoints; strict RBAC preventing customers from tampering with branch stocks or accessing administrative metrics.
-
----
 *Created by Vismitha for the DartCodes (Pvt) Ltd Software Engineer Intern Technical Assessment.*
