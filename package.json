@@ -7,11 +7,15 @@
     "backend",
     "Smart Order Allocation System"
   ],
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "node-fetch": "^3.3.2"
+  },
   "scripts": {
-    "start": "node backend/dist/server.js",
-    "build": "npm --prefix \"Smart Order Allocation System\" run build && npm --prefix backend run build",
-    "dev": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix \"Smart Order Allocation System\" run dev",
+    "start": "node init && node backend/dist/server.js",
+    "build": "node init && npm --prefix \"Smart Order Allocation System\" run build && npm --prefix backend run build",
+    "dev": "node init && npm --prefix backend run dev",
+    "dev:frontend": "node init && npm --prefix \"Smart Order Allocation System\" run dev",
     "seed": "npm --prefix backend run seed",
     "test": "npm --prefix backend test",
     "ml:train": "python ml/train_model.py",

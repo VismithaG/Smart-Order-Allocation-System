@@ -5,9 +5,9 @@
   "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
+    "dev": "node init && tsx watch src/server.ts",
+    "build": "node init && tsc",
+    "start": "node init && node dist/server.js",
     "seed": "tsx src/db/seed.ts",
     "test": "tsx src/tests/api.test.ts"
   },
